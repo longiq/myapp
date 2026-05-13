@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory – MyApp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    #navbar {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .9rem 2rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .nav-brand { display: flex; align-items: center; gap: .5rem; font-size: 1.2rem; font-weight: 700; color: #1a1a2e; }
+    .nav-logo { font-size: 1.4rem; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { text-decoration: none; color: #6b7280; font-weight: 500; font-size: .95rem; padding: .3rem .5rem; border-radius: 6px; transition: all .2s; }
+    .nav-links a:hover, .nav-links a.active { color: #4f46e5; background: #ede9fe; }
+    .nav-user { display: flex; align-items: center; gap: 1rem; }
+    .nav-username { font-size: .9rem; color: #374151; font-weight: 500; }
+    .btn-logout { padding: .4rem .9rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: .875rem; cursor: pointer; transition: all .2s; }
+    .btn-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    main { max-width: 800px; margin: 0 auto; padding: 4rem 1.5rem; text-align: center; }
+
+    .coming-icon { font-size: 5rem; margin-bottom: 1.5rem; }
+    h1 { font-size: 2rem; color: #1a1a2e; margin-bottom: .75rem; }
+    .subtitle { font-size: 1.1rem; color: #6b7280; margin-bottom: 2.5rem; line-height: 1.6; }
+
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-bottom: 2.5rem;
+    }
+    .feature-item {
+      background: #fff; border-radius: 12px; padding: 1.5rem;
+      border: 2px dashed #e5e7eb; text-align: center;
+    }
+    .feature-item .fi { font-size: 2rem; margin-bottom: .75rem; }
+    .feature-item h3 { font-size: .95rem; color: #374151; font-weight: 600; margin-bottom: .4rem; }
+    .feature-item p { font-size: .82rem; color: #9ca3af; }
+
+    .api-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: #ede9fe; color: #4f46e5; padding: .5rem 1rem;
+      border-radius: 8px; font-size: .85rem; font-weight: 600; margin-bottom: 2rem;
+    }
+    .api-badge code { font-family: monospace; }
+
+    .btn-back {
+      padding: .75rem 1.75rem; background: #4f46e5; color: #fff;
+      border: none; border-radius: 8px; font-size: .95rem; font-weight: 600;
+      cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    .btn-back:hover { background: #4338ca; }
+  </style>
+</head>
+<body>
+
+<nav id="navbar"></nav>
+
+<main>
+  <div class="coming-icon">📦</div>
+  <h1>Inventory Module</h1>
+  <p class="subtitle">
+    Module quản lý hàng tồn kho đang được phát triển.<br>
+    API endpoint đã sẵn sàng và được bảo vệ bởi JWT.
+  </p>
+
+  <div class="api-badge">
+    ✅ API sẵn sàng: <code>GET /api/v1/inventory</code>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="fi">🗃️</div>
+      <h3>Quản lý sản phẩm</h3>
+      <p>Thêm, sửa, xóa sản phẩm trong kho</p>
+    </div>
+    <div class="feature-item">
+      <div class="fi">📊</div>
+      <h3>Báo cáo tồn kho</h3>
+      <p>Thống kê nhập xuất, tồn kho theo thời gian</p>
+    </div>
+    <div class="feature-item">
+      <div class="fi">🔔</div>
+      <h3>Cảnh báo</h3>
+      <p>Thông báo khi hàng sắp hết hoặc đã hết</p>
+    </div>
+    <div class="feature-item">
+      <div class="fi">🔍</div>
+      <h3>Tìm kiếm</h3>
+      <p>Tìm kiếm và lọc sản phẩm nhanh chóng</p>
+    </div>
+  </div>
+
+  <a href="/dashboard.html" class="btn-back">← Quay lại Dashboard</a>
+</main>
+
+<script type="module">
+  import { requireAuth, renderNavbar } from '/js/app.js';
+  const user = await requireAuth();
+  if (user) renderNavbar(user);
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard – MyApp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    /* Navbar */
+    #navbar {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .9rem 2rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .nav-brand { display: flex; align-items: center; gap: .5rem; font-size: 1.2rem; font-weight: 700; color: #1a1a2e; }
+    .nav-logo { font-size: 1.4rem; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { text-decoration: none; color: #6b7280; font-weight: 500; font-size: .95rem; padding: .3rem .5rem; border-radius: 6px; transition: all .2s; }
+    .nav-links a:hover, .nav-links a.active { color: #4f46e5; background: #ede9fe; }
+    .nav-user { display: flex; align-items: center; gap: 1rem; }
+    .nav-username { font-size: .9rem; color: #374151; font-weight: 500; }
+    .btn-logout {
+      padding: .4rem .9rem; background: #f3f4f6; color: #374151;
+      border: 1px solid #d1d5db; border-radius: 6px;
+      font-size: .875rem; cursor: pointer; transition: all .2s;
+    }
+    .btn-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    /* Main */
+    main { max-width: 1000px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .greeting { margin-bottom: 2rem; }
+    .greeting h1 { font-size: 1.8rem; color: #1a1a2e; }
+    .greeting p { color: #6b7280; margin-top: .4rem; }
+
+    /* Module cards */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .module-card {
+      background: #fff; border-radius: 16px;
+      padding: 2rem; border: 2px solid #f3f4f6;
+      transition: all .25s; cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    .module-card:hover { border-color: #4f46e5; transform: translateY(-3px); box-shadow: 0 12px 32px rgba(79,70,229,.12); }
+    .module-card.done { cursor: default; }
+    .module-card.done:hover { transform: none; border-color: #d1fae5; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+    .module-card .icon { font-size: 2.5rem; display: block; margin-bottom: 1rem; }
+    .module-card h2 { font-size: 1.2rem; color: #1a1a2e; margin-bottom: .5rem; }
+    .module-card p { font-size: .9rem; color: #6b7280; line-height: 1.5; }
+    .badge {
+      display: inline-block; margin-top: 1rem;
+      padding: .3rem .8rem; border-radius: 20px;
+      font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .badge.done-badge { background: #d1fae5; color: #065f46; }
+    .badge.ready-badge { background: #ede9fe; color: #4f46e5; }
+    .badge.coming-badge { background: #fef3c7; color: #92400e; }
+
+    /* API info */
+    .api-info {
+      margin-top: 2.5rem; background: #fff; border-radius: 12px;
+      padding: 1.5rem; border: 1px solid #e5e7eb;
+    }
+    .api-info h3 { font-size: 1rem; color: #374151; margin-bottom: 1rem; }
+    .api-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .api-table th { text-align: left; padding: .5rem .75rem; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+    .api-table td { padding: .5rem .75rem; color: #374151; border-bottom: 1px solid #f3f4f6; }
+    .api-table td code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: .82rem; color: #4f46e5; }
+    .method { font-weight: 600; font-size: .78rem; padding: 2px 8px; border-radius: 4px; }
+    .method.get { background: #d1fae5; color: #065f46; }
+    .method.post { background: #dbeafe; color: #1e40af; }
+  </style>
+</head>
+<body>
+
+<nav id="navbar"></nav>
+
+<main>
+  <div class="greeting">
+    <h1 id="greeting-text">Xin chào!</h1>
+    <p>Chọn module bạn muốn sử dụng bên dưới.</p>
+  </div>
+
+  <div class="modules-grid">
+    <div class="module-card done">
+      <span class="icon">🔐</span>
+      <h2>Login & Auth</h2>
+      <p>Xác thực JWT với đăng ký, đăng nhập, refresh token và bảo vệ route.</p>
+      <span class="badge done-badge">✓ Hoạt động</span>
+    </div>
+
+    <div class="module-card" onclick="location.href='/inventory.html'">
+      <span class="icon">📦</span>
+      <h2>Inventory</h2>
+      <p>Quản lý hàng tồn kho, nhập xuất kho, cảnh báo tồn kho thấp.</p>
+      <span class="badge coming-badge">Sắp ra mắt</span>
+    </div>
+
+    <div class="module-card" onclick="location.href='/payment.html'">
+      <span class="icon">💳</span>
+      <h2>Payment</h2>
+      <p>Thanh toán trực tuyến qua Stripe với Payment Element đầy đủ tính năng.</p>
+      <span class="badge ready-badge">Sẵn sàng →</span>
+    </div>
+  </div>
+
+  <div class="api-info">
+    <h3>📡 API Endpoints</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/v1/auth/register</code></td><td>Đăng ký tài khoản</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/v1/auth/login</code></td><td>Đăng nhập, nhận JWT</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/v1/auth/me</code></td><td>Thông tin user hiện tại</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/v1/payment/create-payment-intent</code></td><td>Tạo Stripe Payment Intent</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/v1/inventory</code></td><td>Danh sách hàng tồn kho</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/docs</code></td><td>Swagger UI</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script type="module">
+  import { requireAuth, renderNavbar } from '/js/app.js';
+  const user = await requireAuth();
+  if (user) {
+    renderNavbar(user);
+    document.getElementById('greeting-text').textContent = `Xin chào, ${user.username}! 👋`;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyApp – Đăng nhập</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .brand .logo { font-size: 2.5rem; }
+    .brand h1 { font-size: 1.6rem; color: #1a1a2e; margin-top: .5rem; }
+    .brand p { color: #6b7280; font-size: .9rem; margin-top: .25rem; }
+
+    .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 1.5rem; }
+    .tab-btn {
+      flex: 1; padding: .65rem; background: none; border: none;
+      cursor: pointer; font-size: .95rem; color: #6b7280; transition: color .2s;
+    }
+    .tab-btn.active {
+      color: #4f46e5; border-bottom: 2px solid #4f46e5;
+      margin-bottom: -2px; font-weight: 600;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: .875rem; color: #374151; margin-bottom: .4rem; font-weight: 500; }
+    input {
+      width: 100%; padding: .65rem .9rem;
+      border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: .95rem; outline: none; transition: border-color .2s;
+    }
+    input:focus { border-color: #4f46e5; }
+
+    .btn {
+      width: 100%; padding: .75rem;
+      background: #4f46e5; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background .2s; margin-top: .5rem;
+    }
+    .btn:hover { background: #4338ca; }
+    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .alert {
+      padding: .75rem 1rem; border-radius: 8px;
+      font-size: .875rem; margin-bottom: 1rem; display: none;
+    }
+    .alert.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .alert.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <div class="logo">⚡</div>
+    <h1>MyApp</h1>
+    <p>Đăng nhập để tiếp tục</p>
+  </div>
+
+  <div id="alert" class="alert"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('login')">Đăng nhập</button>
+    <button class="tab-btn" onclick="switchTab('register')">Đăng ký</button>
+  </div>
+
+  <div id="tab-login" class="tab-panel active">
+    <form id="login-form">
+      <div class="form-group">
+        <label>Tên đăng nhập</label>
+        <input id="login-username" type="text" placeholder="username" required />
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input id="login-password" type="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn" id="btn-login">Đăng nhập</button>
+    </form>
+  </div>
+
+  <div id="tab-register" class="tab-panel">
+    <form id="register-form">
+      <div class="form-group">
+        <label>Tên đăng nhập</label>
+        <input id="reg-username" type="text" placeholder="username (3–50 ký tự)" required />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input id="reg-email" type="email" placeholder="you@example.com" required />
+      </div>
+      <div class="form-group">
+        <label>Họ tên (tuỳ chọn)</label>
+        <input id="reg-fullname" type="text" placeholder="Nguyễn Văn A" />
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input id="reg-password" type="password" placeholder="Ít nhất 8 ký tự" required />
+      </div>
+      <button type="submit" class="btn" id="btn-register">Đăng ký</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { authModule, AuthError } from '/js/auth.js';
+
+  if (authModule.isLoggedIn()) {
+    authModule.getMe().then(() => { window.location.href = '/dashboard.html'; }).catch(() => {});
+  }
+
+  window.switchTab = (tab) => {
+    document.querySelectorAll('.tab-btn').forEach((b, i) =>
+      b.classList.toggle('active', (i === 0) === (tab === 'login'))
+    );
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    hideAlert();
+  };
+
+  function showAlert(msg, type = 'error') {
+    const el = document.getElementById('alert');
+    el.textContent = msg; el.className = `alert ${type}`; el.style.display = 'block';
+  }
+  function hideAlert() { document.getElementById('alert').style.display = 'none'; }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-login');
+    btn.disabled = true; btn.textContent = 'Đang đăng nhập...'; hideAlert();
+    try {
+      await authModule.login(
+        document.getElementById('login-username').value.trim(),
+        document.getElementById('login-password').value,
+      );
+      window.location.href = '/dashboard.html';
+    } catch (err) {
+      showAlert(err instanceof AuthError ? err.message : 'Đã xảy ra lỗi, thử lại sau');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Đăng nhập';
+    }
+  });
+
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-register');
+    btn.disabled = true; btn.textContent = 'Đang đăng ký...'; hideAlert();
+    try {
+      await authModule.register(
+        document.getElementById('reg-username').value.trim(),
+        document.getElementById('reg-email').value.trim(),
+        document.getElementById('reg-password').value,
+        document.getElementById('reg-fullname').value.trim() || null,
+      );
+      showAlert('Đăng ký thành công! Vui lòng đăng nhập.', 'success');
+      window.switchTab('login');
+    } catch (err) {
+      showAlert(err instanceof AuthError ? err.message : 'Đã xảy ra lỗi, thử lại sau');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Đăng ký';
+    }
+  });
+</script>
+</body>
+</html>
