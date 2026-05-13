@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment – MyApp</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    #navbar {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .9rem 2rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .nav-brand { display: flex; align-items: center; gap: .5rem; font-size: 1.2rem; font-weight: 700; color: #1a1a2e; }
+    .nav-logo { font-size: 1.4rem; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { text-decoration: none; color: #6b7280; font-weight: 500; font-size: .95rem; padding: .3rem .5rem; border-radius: 6px; transition: all .2s; }
+    .nav-links a:hover, .nav-links a.active { color: #4f46e5; background: #ede9fe; }
+    .nav-user { display: flex; align-items: center; gap: 1rem; }
+    .nav-username { font-size: .9rem; color: #374151; font-weight: 500; }
+    .btn-logout { padding: .4rem .9rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: .875rem; cursor: pointer; transition: all .2s; }
+    .btn-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    main { display: flex; align-items: flex-start; justify-content: center; padding: 2.5rem 1.5rem; gap: 2rem; flex-wrap: wrap; }
+
+    .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.07); padding: 2rem; }
+    .order-card { width: 300px; }
+    .checkout-card { width: 420px; }
+
+    .order-card h2 { font-size: 1rem; color: #374151; margin-bottom: 1.2rem; font-weight: 600; }
+    .order-item { display: flex; justify-content: space-between; padding: .6rem 0; font-size: .9rem; border-bottom: 1px solid #f3f4f6; }
+    .order-total { display: flex; justify-content: space-between; padding: .8rem 0; font-weight: 700; font-size: 1rem; }
+    .price { font-weight: 600; color: #111827; }
+
+    .amount-control { display: flex; gap: .5rem; align-items: center; margin-top: 1.5rem; }
+    .amount-control label { font-size: .875rem; color: #374151; font-weight: 500; min-width: 60px; }
+    .amount-control input {
+      flex: 1; padding: .5rem .75rem; border: 1.5px solid #d1d5db;
+      border-radius: 8px; font-size: .95rem; outline: none;
+    }
+    .amount-control input:focus { border-color: #4f46e5; }
+
+    .checkout-card h2 { font-size: 1rem; color: #374151; margin-bottom: 1.5rem; font-weight: 600; }
+    #payment-element { margin-bottom: 1.5rem; }
+    #submit-btn {
+      width: 100%; padding: .85rem; background: #4f46e5; color: #fff;
+      border: none; border-radius: 10px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: background .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #submit-btn:hover:not(:disabled) { background: #4338ca; }
+    #submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .payment-message {
+      color: #dc2626; font-size: .875rem; margin-bottom: 1rem;
+      padding: .75rem 1rem; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;
+    }
+    .test-hint { margin-top: 1.2rem; font-size: .8rem; color: #9ca3af; text-align: center; line-height: 1.6; }
+    .test-hint code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #374151; }
+    .hidden { display: none !important; }
+
+    /* Result overlay */
+    .result-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    .result-card { background: #fff; border-radius: 16px; padding: 2.5rem; text-align: center; max-width: 380px; width: 90%; }
+    .result-icon { width: 72px; height: 72px; border-radius: 50%; font-size: 2rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+    .success-icon { background: #d1fae5; color: #059669; }
+    .error-icon { background: #fee2e2; color: #dc2626; }
+    .result-card h2 { font-size: 1.4rem; margin-bottom: .5rem; }
+    .result-card p { color: #6b7280; margin-bottom: 1.5rem; }
+    .result-amount { font-size: 1.8rem; font-weight: 700; color: #059669; margin: .5rem 0 1rem; }
+    .btn-back { padding: .65rem 1.5rem; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; }
+    .btn-back:hover { background: #4338ca; }
+    .btn-new { padding: .65rem 1.5rem; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; margin-left: .75rem; }
+  </style>
+</head>
+<body>
+
+<nav id="navbar"></nav>
+
+<main>
+  <div class="card order-card">
+    <h2>Chi tiết đơn hàng</h2>
+    <div class="order-item">
+      <span>Mô tả</span>
+      <span id="order-desc" class="price">Thanh toán</span>
+    </div>
+    <div class="order-total">
+      <span>Tổng cộng</span>
+      <span id="order-total" class="price">$50.00 USD</span>
+    </div>
+
+    <div class="amount-control">
+      <label>Số tiền ($)</label>
+      <input type="number" id="amount-input" value="50" min="1" max="9999" step="1" />
+    </div>
+    <p style="margin-top:.5rem;font-size:.8rem;color:#9ca3af">Đơn vị: USD (cents × 100)</p>
+  </div>
+
+  <div class="card checkout-card">
+    <h2>💳 Thông tin thanh toán</h2>
+    <div id="payment-message" class="payment-message hidden"></div>
+    <div id="payment-element"></div>
+    <button id="submit-btn">
+      <span id="btn-text">Thanh toán ngay</span>
+      <span id="btn-spinner" class="spinner hidden"></span>
+    </button>
+    <p class="test-hint">
+      🧪 Thẻ test: <code>4242 4242 4242 4242</code><br>
+      Ngày hết hạn bất kỳ trong tương lai &nbsp;|&nbsp; CVC bất kỳ
+    </p>
+  </div>
+</main>
+
+<script type="module">
+  import { requireAuth, renderNavbar, authModule } from '/js/app.js';
+
+  const PUBLISHABLE_KEY = 'pk_test_51TR7f9IRuDw1vq3TEGlJegq9P5QGL7h3qhtbUujofG9vOstnus6ElSMlyYgYafMKDCR0A6dy2MnOSbB2dS5pVQQk008C1At0D3';
+
+  const user = await requireAuth();
+  if (!user) throw new Error('Not authenticated');
+  renderNavbar(user);
+
+  const stripe = Stripe(PUBLISHABLE_KEY);
+  let elements;
+  let currentAmountDisplay = '';
+
+  async function initializePayment() {
+    const amountDollars = parseFloat(document.getElementById('amount-input').value) || 50;
+    const amountCents = Math.round(amountDollars * 100);
+
+    document.getElementById('order-total').textContent = `$${amountDollars.toFixed(2)} USD`;
+    document.getElementById('order-desc').textContent = `${user.username} – Premium`;
+    document.getElementById('btn-text').textContent = `Thanh toán $${amountDollars.toFixed(2)}`;
+    document.getElementById('submit-btn').disabled = true;
+
+    // Destroy old elements if reinitializing
+    if (elements) {
+      elements.getElement('payment')?.destroy();
+    }
+
+    try {
+      const res = await authModule.authFetch('/payment/create-payment-intent', {
+        method: 'POST',
+        body: JSON.stringify({ amount: amountCents, currency: 'usd' }),
+      });
+      const { clientSecret, amount_display } = await res.json();
+      currentAmountDisplay = amount_display;
+
+      elements = stripe.elements({
+        clientSecret,
+        appearance: { theme: 'stripe', variables: { colorPrimary: '#4f46e5', borderRadius: '8px' } },
+      });
+      elements.create('payment', {
+        layout: 'tabs',
+        defaultValues: { billingDetails: { address: { country: 'VN' } } },
+      }).mount('#payment-element');
+
+      document.getElementById('submit-btn').disabled = false;
+    } catch (err) {
+      showMessage('Lỗi khởi tạo thanh toán: ' + err.message);
+    }
+  }
+
+  // Reinitialize when amount changes
+  let debounce;
+  document.getElementById('amount-input').addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(initializePayment, 600);
+  });
+
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    setLoading(true);
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: 'if_required',
+    });
+
+    if (error) {
+      showMessage(error.message);
+      setLoading(false);
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      showResult(true, currentAmountDisplay);
+    } else {
+      showMessage('Thanh toán chưa hoàn tất, vui lòng thử lại.');
+      setLoading(false);
+    }
+  });
+
+  function showMessage(msg) {
+    const el = document.getElementById('payment-message');
+    el.textContent = msg; el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 7000);
+  }
+
+  function setLoading(isLoading) {
+    document.getElementById('submit-btn').disabled = isLoading;
+    document.getElementById('btn-text').classList.toggle('hidden', isLoading);
+    document.getElementById('btn-spinner').classList.toggle('hidden', !isLoading);
+  }
+
+  function showResult(success, amountDisplay) {
+    const overlay = document.createElement('div');
+    overlay.className = 'result-overlay';
+    overlay.innerHTML = success ? `
+      <div class="result-card">
+        <div class="result-icon success-icon">✓</div>
+        <h2>Thanh toán thành công!</h2>
+        <p class="result-amount">${amountDisplay}</p>
+        <p>Cảm ơn bạn đã thanh toán.</p>
+        <button class="btn-back" onclick="location.href='/dashboard.html'">← Dashboard</button>
+        <button class="btn-new" onclick="this.closest('.result-overlay').remove(); initializePayment();">Thanh toán mới</button>
+      </div>
+    ` : `
+      <div class="result-card">
+        <div class="result-icon error-icon">✕</div>
+        <h2>Thanh toán thất bại</h2>
+        <p>Vui lòng thử lại.</p>
+        <button class="btn-back" onclick="this.closest('.result-overlay').remove()">Thử lại</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    window.initializePayment = initializePayment;
+  }
+
+  await initializePayment();
+</script>
+</body>
+</html>
