@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_VERIFY_SSL: bool = True
 
     class Config:
         env_file = ".env"

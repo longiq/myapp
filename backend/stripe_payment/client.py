@@ -2,6 +2,7 @@ import os
 import stripe
 from dotenv import load_dotenv
 from .exceptions import ConfigurationError
+from app.core.config import settings
 
 load_dotenv()
 
@@ -14,6 +15,9 @@ def init_stripe(secret_key: str = None) -> None:
             code="missing_api_key",
         )
     stripe.api_key = key
+    # Local/dev fallback for corporate proxy SSL interception.
+    if not settings.STRIPE_VERIFY_SSL:
+        stripe.verify_ssl_certs = False
 
 
 def get_stripe_client() -> stripe:
