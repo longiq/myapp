@@ -32,27 +32,49 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     if settings.STRIPE_SECRET_KEY:
         init_stripe(settings.STRIPE_SECRET_KEY)
-    _auto_seed()
+    _startup_db_fixes()
     yield
 
 
-def _auto_seed() -> None:
+def _startup_db_fixes() -> None:
+    """Run on every startup: fix existing records and seed any missing questions."""
     from app.database import SessionLocal
     from app.jlpt.models import Question
-    try:
-        from crawler.seed_data import get_seed_questions
-    except ImportError:
-        return
     db = SessionLocal()
     try:
-        if db.query(Question).count() == 0:
-            questions = get_seed_questions()
-            for q in questions:
-                db.add(Question(**q))
+        # 1. Activate any listening questions that were seeded with is_active=False
+        updated = (
+            db.query(Question)
+            .filter(Question.question_type == "listening", Question.is_active == False)
+            .update({"is_active": True})
+        )
+        if updated:
             db.commit()
-            print(f"[startup] Auto-seeded {len(questions)} JLPT questions.")
+            print(f"[startup] Activated {updated} listening questions.")
+
+        # 2. Insert seed questions that are not yet in the DB (duplicate-safe)
+        try:
+            from crawler.seed_data import get_seed_questions
+        except ImportError:
+            return
+        questions = get_seed_questions()
+        added = 0
+        for q in questions:
+            exists = (
+                db.query(Question)
+                .filter(Question.level == q["level"], Question.question_text == q["question_text"])
+                .first()
+            )
+            if not exists:
+                db.add(Question(**q))
+                added += 1
+        if added:
+            db.commit()
+            print(f"[startup] Seeded {added} new questions.")
+        else:
+            print("[startup] DB up-to-date, no new questions added.")
     except Exception as exc:
-        print(f"[startup] Auto-seed failed: {exc}")
+        print(f"[startup] DB fixes failed: {exc}")
         db.rollback()
     finally:
         db.close()
