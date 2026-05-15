@@ -22,8 +22,8 @@ export function renderNavbar(user) {
     </div>
     <div class="nav-links">
       <a href="/dashboard.html" class="${location.pathname.includes('dashboard') ? 'active' : ''}">Dashboard</a>
+      <a href="/jlpt.html" class="${location.pathname.includes('jlpt') ? 'active' : ''}">🎌 JLPT</a>
       <a href="/payment.html" class="${location.pathname.includes('payment') ? 'active' : ''}">💳 Payment</a>
-      <a href="/inventory.html" class="${location.pathname.includes('inventory') ? 'active' : ''}">📦 Inventory</a>
     </div>
     <div class="nav-user">
       <span class="nav-username">👤 ${user.username}</span>
