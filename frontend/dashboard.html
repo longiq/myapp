@@ -95,11 +95,11 @@
       <span class="badge done-badge">✓ Hoạt động</span>
     </div>
 
-    <div class="module-card" onclick="location.href='/inventory.html'">
-      <span class="icon">📦</span>
-      <h2>Inventory</h2>
-      <p>Quản lý hàng tồn kho, nhập xuất kho, cảnh báo tồn kho thấp.</p>
-      <span class="badge coming-badge">Sắp ra mắt</span>
+    <div class="module-card" onclick="location.href='/jlpt.html'">
+      <span class="icon">🎌</span>
+      <h2>JLPT Quiz</h2>
+      <p>Luyện thi năng lực tiếng Nhật N1–N5 với đề thi từ vựng, ngữ pháp, đọc hiểu và nghe hiểu.</p>
+      <span class="badge ready-badge">Sẵn sàng →</span>
     </div>
 
     <div class="module-card" onclick="location.href='/payment.html'">
@@ -120,8 +120,10 @@
         <tr><td><span class="method post">POST</span></td><td><code>/api/v1/auth/register</code></td><td>Đăng ký tài khoản</td></tr>
         <tr><td><span class="method post">POST</span></td><td><code>/api/v1/auth/login</code></td><td>Đăng nhập, nhận JWT</td></tr>
         <tr><td><span class="method get">GET</span></td><td><code>/api/v1/auth/me</code></td><td>Thông tin user hiện tại</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/v1/jlpt/quiz/start</code></td><td>Bắt đầu quiz JLPT</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/v1/jlpt/quiz/{id}/answer</code></td><td>Nộp câu trả lời</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/v1/jlpt/quiz/history</code></td><td>Lịch sử quiz của user</td></tr>
         <tr><td><span class="method post">POST</span></td><td><code>/api/v1/payment/create-payment-intent</code></td><td>Tạo Stripe Payment Intent</td></tr>
-        <tr><td><span class="method get">GET</span></td><td><code>/api/v1/inventory</code></td><td>Danh sách hàng tồn kho</td></tr>
         <tr><td><span class="method get">GET</span></td><td><code>/api/docs</code></td><td>Swagger UI</td></tr>
       </tbody>
     </table>
