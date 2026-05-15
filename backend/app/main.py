@@ -32,7 +32,30 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     if settings.STRIPE_SECRET_KEY:
         init_stripe(settings.STRIPE_SECRET_KEY)
+    _auto_seed()
     yield
+
+
+def _auto_seed() -> None:
+    from app.database import SessionLocal
+    from app.jlpt.models import Question
+    try:
+        from crawler.seed_data import get_seed_questions
+    except ImportError:
+        return
+    db = SessionLocal()
+    try:
+        if db.query(Question).count() == 0:
+            questions = get_seed_questions()
+            for q in questions:
+                db.add(Question(**q))
+            db.commit()
+            print(f"[startup] Auto-seeded {len(questions)} JLPT questions.")
+    except Exception as exc:
+        print(f"[startup] Auto-seed failed: {exc}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 app = FastAPI(

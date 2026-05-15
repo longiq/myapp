@@ -135,9 +135,12 @@ def start_quiz(
     TYPE_ORDER = {"vocabulary": 0, "grammar": 1, "reading": 2, "listening": 3}
     total_minutes: Optional[int] = None
 
-    if payload.full_exam and payload.level in JLPT_STRUCTURE:
+    # Both practice and full-exam use JLPT structure counts.
+    # Full-exam additionally sets total_minutes for the timer.
+    if payload.level in JLPT_STRUCTURE:
         structure = JLPT_STRUCTURE[payload.level]
-        total_minutes = structure["minutes"]
+        if payload.full_exam:
+            total_minutes = structure["minutes"]
         selected: list[Question] = []
         for qtype, count in structure.items():
             if qtype == "minutes":
@@ -163,7 +166,7 @@ def start_quiz(
         all_matching = query.all()
         if not all_matching:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No questions found.")
-        num = min(payload.num_questions, len(all_matching))
+        num = len(all_matching)
         selected = sorted(random.sample(all_matching, num), key=lambda q: TYPE_ORDER.get(q.question_type, 9))
 
     session = JlptQuizSession(
