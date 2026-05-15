@@ -1562,6 +1562,11 @@ def get_seed_questions() -> list[dict]:
         extended += get_listening_demo_questions()
     except ImportError:
         pass
+    try:
+        from .seed_data_reading_long import get_long_reading_questions
+        extended += get_long_reading_questions()
+    except ImportError:
+        pass
     return base + extended
 
 
