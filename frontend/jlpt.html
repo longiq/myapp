@@ -88,15 +88,6 @@
               <option value="listening">Nghe hiểu (聴解)</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Số câu hỏi</label>
-            <select id="sel-num" class="form-select">
-              <option value="5">5 câu</option>
-              <option value="10" selected>10 câu</option>
-              <option value="20">20 câu</option>
-              <option value="30">30 câu</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -260,54 +251,20 @@
         <button id="btn-seed" class="btn btn-success" onclick="loadSeedData()">📥 Nạp dữ liệu mẫu</button>
       </div>
 
-      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-
-      <div class="card-title" style="font-size:0.95rem;">🕷️ Thu thập dữ liệu web</div>
-      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-        Tự động thu thập câu hỏi từ các trang học tiếng Nhật.
-      </p>
-      <div class="crawl-options">
-        <div class="form-group">
-          <label class="form-label">Nguồn dữ liệu</label>
-          <select id="crawl-source" class="form-select">
-            <option value="dethitiengnhat">dethitiengnhat.com</option>
-            <option value="lophoctiengnhat">lophoctiengnhat.com</option>
-          </select>
+      <!-- crawler section hidden — feature not yet ready -->
+      <div id="crawler-section" style="display:none;">
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+        <div class="crawl-options">
+          <div class="form-group"><select id="crawl-source" class="form-select"><option value="dethitiengnhat">dethitiengnhat.com</option></select></div>
+          <div class="form-group"><select id="crawl-level" class="form-select"><option value="">-- Chọn --</option></select></div>
+          <div class="form-group"><select id="crawl-type" class="form-select"><option value="">Tất cả loại</option></select></div>
+          <div class="form-group"><select id="crawl-pages" class="form-select"><option value="3" selected>3 trang</option></select></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Cấp độ</label>
-          <select id="crawl-level" class="form-select">
-            <option value="">-- Chọn --</option>
-            <option value="N5">N5</option>
-            <option value="N4">N4</option>
-            <option value="N3">N3</option>
-            <option value="N2">N2</option>
-            <option value="N1">N1</option>
-          </select>
+        <button id="btn-crawl" class="btn btn-primary" onclick="startCrawl()">🕷️ Bắt đầu thu thập</button>
+        <div style="margin-top:16px;">
+          <div class="form-label">Nhật ký thực thi</div>
+          <div id="crawl-log" class="log-box"><span class="log-info">Nhật ký sẽ hiển thị ở đây...</span></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Loại câu hỏi</label>
-          <select id="crawl-type" class="form-select">
-            <option value="">Tất cả loại</option>
-            <option value="vocabulary">Từ vựng</option>
-            <option value="grammar">Ngữ pháp</option>
-            <option value="reading">Đọc hiểu</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Số trang tối đa</label>
-          <select id="crawl-pages" class="form-select">
-            <option value="1">1 trang</option>
-            <option value="3" selected>3 trang</option>
-            <option value="5">5 trang</option>
-            <option value="10">10 trang</option>
-          </select>
-        </div>
-      </div>
-      <button id="btn-crawl" class="btn btn-primary" onclick="startCrawl()">🕷️ Bắt đầu thu thập</button>
-      <div style="margin-top:16px;">
-        <div class="form-label">Nhật ký thực thi</div>
-        <div id="crawl-log" class="log-box"><span class="log-info">Nhật ký sẽ hiển thị ở đây...</span></div>
       </div>
     </div>
   </div>

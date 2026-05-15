@@ -601,7 +601,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、男性が提案していることは何ですか。",
         "option_a": "会議を延期する",
         "option_b": "オンラインで会議を行う",
@@ -615,7 +615,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、女性はなぜ困っていますか。",
         "option_a": "締め切りまで時間がない",
         "option_b": "資料が見つからない",
@@ -629,7 +629,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、二人が決めたことは何ですか。",
         "option_a": "新製品の発売を遅らせる",
         "option_b": "市場調査を追加で行う",
@@ -643,7 +643,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "講義を聞いて、教授が強調していることは何ですか。",
         "option_a": "暗記の重要性",
         "option_b": "批判的思考の重要性",
@@ -657,7 +657,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、女性はどのような点を評価していますか。",
         "option_a": "価格が安いこと",
         "option_b": "デザインが優れていること",
@@ -671,7 +671,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "ニュースを聞いて、報道の内容として正しいものはどれですか。",
         "option_a": "新しい条約が締結された",
         "option_b": "交渉が決裂した",
@@ -685,7 +685,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、男性はなぜ転職を考えていますか。",
         "option_a": "給与が低いから",
         "option_b": "通勤が遠いから",
@@ -699,7 +699,7 @@ N1_LISTENING = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、二人が合意したこととして正しいものはどれですか。",
         "option_a": "イベントを中止する",
         "option_b": "イベントの規模を縮小する",
@@ -1048,7 +1048,7 @@ N1_EXTRA = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、女性が懸念していることは何ですか。",
         "option_a": "新システムの導入コストが高すぎること",
         "option_b": "社員がシステムに慣れるまでに時間がかかること",
@@ -1062,7 +1062,7 @@ N1_EXTRA = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "講演を聞いて、講師が最も伝えたいこととして適切なものはどれですか。",
         "option_a": "AIの普及で雇用は消滅する",
         "option_b": "AIと人間の協働が新たな価値を生む",
@@ -1076,7 +1076,7 @@ N1_EXTRA = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、男性が最終的に決めたことは何ですか。",
         "option_a": "論文の提出を諦める",
         "option_b": "指導教員に延長を申請する",
@@ -1090,7 +1090,7 @@ N1_EXTRA = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "ラジオのニュースを聞いて、報告の内容として正しいものはどれですか。",
         "option_a": "自然災害により交通機関が全面停止した",
         "option_b": "政府が新たな経済対策を発表した",
@@ -1104,7 +1104,7 @@ N1_EXTRA = [
     {
         "level": "N1",
         "question_type": "listening",
-        "is_active": False,
+        "is_active": True,
         "question_text": "会話を聞いて、二人が共通して感じていることはどれですか。",
         "option_a": "海外留学は費用対効果が低い",
         "option_b": "異文化体験が視野を広げる",

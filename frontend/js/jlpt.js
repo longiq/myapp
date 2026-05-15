@@ -147,13 +147,12 @@ window.startQuiz = async function() {
   if (isFullExam) {
     const level = document.getElementById('sel-level-full').value;
     if (!level) { toast('Vui lòng chọn cấp độ!', 'error'); return; }
-    payload = { level, full_exam: true, num_questions: 200 };
+    payload = { level, full_exam: true };
   } else {
     const level = document.getElementById('sel-level').value;
     const qtype = document.getElementById('sel-type').value;
-    const num = parseInt(document.getElementById('sel-num').value) || 10;
     if (!level) { toast('Vui lòng chọn cấp độ!', 'error'); return; }
-    payload = { level, question_type: qtype || null, num_questions: num };
+    payload = { level, question_type: qtype || null };
   }
 
   const btn = document.getElementById('btn-start');
