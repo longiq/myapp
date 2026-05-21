@@ -28,6 +28,7 @@ const state = {
     passageVisible: {},
     paused: false,
   },
+  exam: { level: 'N1', sets: [] },
   stats: null,
 };
 
@@ -37,6 +38,25 @@ const guestState = {
   guestToken: null,
   correctMap: {},  // {question_id: shuffled_correct_label}
 };
+
+// ── Custom Confirm Modal ───────────────────────────────
+function showConfirm(message, confirmText = 'Tiếp tục', cancelText = 'Hủy') {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:2000;';
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:28px 24px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);animation:almUp .2s ease;">
+        <p style="margin:0 0 24px;font-size:0.95rem;line-height:1.6;color:var(--text);">${message}</p>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="sc-cancel" class="btn btn-outline">${cancelText}</button>
+          <button id="sc-ok" class="btn btn-primary">${confirmText}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#sc-ok').onclick = () => { overlay.remove(); resolve(true); };
+    overlay.querySelector('#sc-cancel').onclick = () => { overlay.remove(); resolve(false); };
+  });
+}
 
 // ── Navigation ─────────────────────────────────────────
 function showPage(name) {
@@ -51,6 +71,7 @@ function showPage(name) {
   document.querySelector(`.nav-tab[data-page="${name}"]`)?.classList.add('active');
   state.currentPage = name;
   if (name === 'home') _updateHomeButtons();
+  if (name === 'exam') loadExamPage();
   if (name === 'history' && getToken()) loadHistory();
   if (name === 'admin' && getToken()) { loadStats(); loadUsers(); loadAdminExamSets(); }
 }
@@ -98,14 +119,6 @@ function _applyAuthState(user) {
   const adminContent = document.getElementById('admin-content');
   if (adminLogin) adminLogin.style.display = isAdmin ? 'none' : '';
   if (adminContent) adminContent.style.display = isAdmin ? '' : 'none';
-
-  // Exam tab — visible to users with exam access or superusers
-  const examTab = document.querySelector('.nav-tab[data-page="exam"]');
-  if (examTab) examTab.style.display = hasExamAccess ? '' : 'none';
-  const examNoAccess = document.getElementById('exam-no-access');
-  const examContent = document.getElementById('exam-content');
-  if (examNoAccess) examNoAccess.style.display = hasExamAccess ? 'none' : '';
-  if (examContent) examContent.style.display = hasExamAccess ? '' : 'none';
 }
 
 // ── Toast ──────────────────────────────────────────────
@@ -207,7 +220,8 @@ window.setQuizMode = function(mode) {
 // ── Start Quiz ─────────────────────────────────────────
 window.startQuiz = async function() {
   if (state.quiz.paused && state.quiz.questions.length > 0) {
-    if (!confirm('Bạn đang có bài làm chưa hoàn thành. Bắt đầu bài mới sẽ hủy tiến độ hiện tại. Tiếp tục?')) return;
+    const ok = await showConfirm('Bạn đang có bài làm chưa hoàn thành.<br>Bắt đầu bài mới sẽ hủy tiến độ hiện tại.', 'Bắt đầu mới', 'Tiếp tục làm');
+    if (!ok) return;
     clearInterval(state.quiz.timer);
     state.quiz.paused = false;
     state.quiz.questions = [];
@@ -485,7 +499,10 @@ async function submitQuiz(forced = false) {
   if (!forced) {
     const answered = Object.keys(state.quiz.answers).length;
     const total = state.quiz.questions.length;
-    if (answered < total && !confirm(`Còn ${total - answered} câu chưa trả lời. Xem kết quả?`)) return;
+    if (answered < total) {
+      const ok = await showConfirm(`Còn <strong>${total - answered} câu</strong> chưa trả lời.<br>Bạn có muốn nộp bài và xem kết quả không?`, 'Nộp bài', 'Làm tiếp');
+      if (!ok) return;
+    }
   }
   clearInterval(state.quiz.timer);
 
@@ -632,6 +649,66 @@ async function loadExamSets() {
 }
 
 window.loadExamSets = loadExamSets;
+
+// ── Exam Catalog (sidebar + year/session grid) ─────────
+
+async function loadExamPage() {
+  const currentUser = (await import('./app.js')).getCurrentUser();
+  const hasAccess = currentUser?.has_jlpt_exam_access || currentUser?.is_superuser;
+  if (hasAccess && getToken()) {
+    try { state.exam.sets = await apiFetch('/quiz/exam-sets'); } catch { state.exam.sets = []; }
+  } else {
+    state.exam.sets = [];
+  }
+  renderExamGrid(state.exam.level);
+}
+
+window.selectExamLevel = function(level) {
+  state.exam.level = level;
+  document.querySelectorAll('.exam-sidebar-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.level === level);
+  });
+  const title = document.getElementById('exam-main-title');
+  if (title) title.textContent = `📋 Đề thi ${level}`;
+  renderExamGrid(level);
+};
+
+function renderExamGrid(level) {
+  const grid = document.getElementById('exam-year-grid');
+  if (!grid) return;
+  const currentYear = new Date().getFullYear();
+  const SESSION_LABEL = { july: '7', december: '12' };
+  const SESSION_ORDER = ['december', 'july'];
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - 1 - i);
+
+  grid.innerHTML = years.flatMap(year =>
+    SESSION_ORDER.map(session => {
+      const match = state.exam.sets.find(
+        s => s.year === year && s.session === session && s.level === level && s.question_count > 0
+      );
+      const label = `${year}/${SESSION_LABEL[session]}`;
+      if (match) {
+        return `<button class="exam-year-btn available" onclick="openExamSet(${match.id})">
+          <div>${label}</div><div class="exam-btn-sub">${match.question_count} câu</div></button>`;
+      }
+      return `<button class="exam-year-btn unavailable" disabled>
+        <div>${label}</div><div class="exam-btn-sub">Sắp có</div></button>`;
+    })
+  ).join('');
+}
+
+window.openExamSet = async function(examSetId) {
+  if (!getToken()) { showLoginModal(); return; }
+  if (state.quiz.paused && state.quiz.questions.length > 0) {
+    const ok = await showConfirm('Bạn đang có bài làm chưa hoàn thành.<br>Bắt đầu đề thi sẽ hủy tiến độ đó.', 'Bắt đầu đề thi', 'Tiếp tục làm');
+    if (!ok) return;
+    clearInterval(state.quiz.timer);
+    state.quiz.paused = false;
+    state.quiz.questions = [];
+    _updateHomeButtons();
+  }
+  await startExamQuiz(examSetId);
+};
 
 window.startExamQuiz = async function(examSetId) {
   try {

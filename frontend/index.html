@@ -1,187 +1,373 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyApp – Đăng nhập</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT – MyApp</title>
+  <link rel="stylesheet" href="/css/jlpt.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.2);
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 420px;
-    }
-    .brand {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .brand .logo { font-size: 2.5rem; }
-    .brand h1 { font-size: 1.6rem; color: #1a1a2e; margin-top: .5rem; }
-    .brand p { color: #6b7280; font-size: .9rem; margin-top: .25rem; }
-
-    .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 1.5rem; }
-    .tab-btn {
-      flex: 1; padding: .65rem; background: none; border: none;
-      cursor: pointer; font-size: .95rem; color: #6b7280; transition: color .2s;
-    }
-    .tab-btn.active {
-      color: #4f46e5; border-bottom: 2px solid #4f46e5;
-      margin-bottom: -2px; font-weight: 600;
-    }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    .form-group { margin-bottom: 1rem; }
-    label { display: block; font-size: .875rem; color: #374151; margin-bottom: .4rem; font-weight: 500; }
-    input {
-      width: 100%; padding: .65rem .9rem;
-      border: 1.5px solid #d1d5db; border-radius: 8px;
-      font-size: .95rem; outline: none; transition: border-color .2s;
-    }
-    input:focus { border-color: #4f46e5; }
-
-    .btn {
-      width: 100%; padding: .75rem;
-      background: #4f46e5; color: #fff;
-      border: none; border-radius: 8px;
-      font-size: 1rem; font-weight: 600; cursor: pointer;
-      transition: background .2s; margin-top: .5rem;
-    }
-    .btn:hover { background: #4338ca; }
-    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
-
-    .alert {
-      padding: .75rem 1rem; border-radius: 8px;
-      font-size: .875rem; margin-bottom: 1rem; display: none;
-    }
-    .alert.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .alert.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .header { position: sticky; top: 0; }
   </style>
 </head>
 <body>
-<div class="card">
-  <div class="brand">
-    <div class="logo">⚡</div>
-    <h1>MyApp</h1>
-    <p>Đăng nhập để tiếp tục</p>
-  </div>
 
-  <div id="alert" class="alert"></div>
-
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('login')">Đăng nhập</button>
-    <button class="tab-btn" onclick="switchTab('register')">Đăng ký</button>
+<!-- JLPT Header -->
+<div class="header">
+  <div>
+    <div class="header-title" style="font-size:1.2rem;font-weight:800;">🎌 Luyện thi JLPT</div>
+    <div style="font-size:0.75rem;opacity:0.8;">Hệ thống luyện thi năng lực tiếng Nhật</div>
   </div>
-
-  <div id="tab-login" class="tab-panel active">
-    <form id="login-form">
-      <div class="form-group">
-        <label>Tên đăng nhập</label>
-        <input id="login-username" type="text" placeholder="username" required />
-      </div>
-      <div class="form-group">
-        <label>Mật khẩu</label>
-        <input id="login-password" type="password" placeholder="••••••••" required />
-      </div>
-      <button type="submit" class="btn" id="btn-login">Đăng nhập</button>
-    </form>
-  </div>
-
-  <div id="tab-register" class="tab-panel">
-    <form id="register-form">
-      <div class="form-group">
-        <label>Tên đăng nhập</label>
-        <input id="reg-username" type="text" placeholder="username (3–50 ký tự)" required />
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input id="reg-email" type="email" placeholder="you@example.com" required />
-      </div>
-      <div class="form-group">
-        <label>Họ tên (tuỳ chọn)</label>
-        <input id="reg-fullname" type="text" placeholder="Nguyễn Văn A" />
-      </div>
-      <div class="form-group">
-        <label>Mật khẩu</label>
-        <input id="reg-password" type="password" placeholder="Ít nhất 8 ký tự" required />
-      </div>
-      <button type="submit" class="btn" id="btn-register">Đăng ký</button>
-    </form>
-  </div>
+  <div class="header-spacer"></div>
 </div>
 
-<script type="module">
-  import { authModule, AuthError } from '/js/auth.js';
+<!-- Nav Tabs -->
+<div class="nav-tabs">
+  <button class="nav-tab active" data-page="home">🏠 Trang chủ</button>
+  <button class="nav-tab" data-page="result">📊 Kết quả</button>
+  <button class="nav-tab" data-page="history">📋 Lịch sử</button>
+  <button class="nav-tab" data-page="admin" style="display:none;">⚙️ Quản lý</button>
+</div>
 
-  if (authModule.isLoggedIn()) {
-    const params = new URLSearchParams(location.search);
-    authModule.getMe().then(() => { window.location.href = params.get('next') || '/jlpt.html'; }).catch(() => {});
-  }
+<div class="container">
 
-  window.switchTab = (tab) => {
-    document.querySelectorAll('.tab-btn').forEach((b, i) =>
-      b.classList.toggle('active', (i === 0) === (tab === 'login'))
-    );
-    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-    hideAlert();
-  };
+  <!-- ════ TRANG CHỦ ════ -->
+  <div id="page-home" class="page active">
+    <div class="hero">
+      <h2>Luyện thi JLPT</h2>
+      <p>Thử sức với đề thi ngữ pháp, từ vựng và đọc hiểu từ N5 đến N1</p>
+    </div>
 
-  function showAlert(msg, type = 'error') {
-    const el = document.getElementById('alert');
-    el.textContent = msg; el.className = `alert ${type}`; el.style.display = 'block';
-  }
-  function hideAlert() { document.getElementById('alert').style.display = 'none'; }
+    <!-- Guest mode banner (hidden for logged-in users) -->
+    <div id="guest-banner" class="card guest-banner" style="display:none;">
+      <span class="guest-banner-icon">💡</span>
+      <div class="guest-banner-text">
+        <strong>Bạn đang dùng chế độ khách</strong>
+        <span>Kết quả sẽ không được lưu.
+          <button class="btn-link" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập</button>
+          để lưu lịch sử và tiến độ học.
+        </span>
+      </div>
+    </div>
 
-  document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-login');
-    btn.disabled = true; btn.textContent = 'Đang đăng nhập...'; hideAlert();
-    try {
-      await authModule.login(
-        document.getElementById('login-username').value.trim(),
-        document.getElementById('login-password').value,
-      );
-      const params = new URLSearchParams(location.search);
-      window.location.href = params.get('next') || '/jlpt.html';
-    } catch (err) {
-      showAlert(err instanceof AuthError ? err.message : 'Đã xảy ra lỗi, thử lại sau');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Đăng nhập';
-    }
-  });
+    <div class="card">
+      <div class="card-title">📝 Thiết lập bài thi</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button id="btn-mode-practice" class="btn btn-primary btn-sm" onclick="setQuizMode('practice')">✏️ Luyện tập nhanh</button>
+        <button id="btn-mode-full" class="btn btn-outline btn-sm" onclick="setQuizMode('full')">🎌 Thi thử đầy đủ</button>
+        <button class="btn btn-outline btn-sm" onclick="showPage('exam')">📋 Đề thi JLPT</button>
+      </div>
 
-  document.getElementById('register-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-register');
-    btn.disabled = true; btn.textContent = 'Đang đăng ký...'; hideAlert();
-    try {
-      await authModule.register(
-        document.getElementById('reg-username').value.trim(),
-        document.getElementById('reg-email').value.trim(),
-        document.getElementById('reg-password').value,
-        document.getElementById('reg-fullname').value.trim() || null,
-      );
-      showAlert('Đăng ký thành công! Vui lòng đăng nhập.', 'success');
-      window.switchTab('login');
-    } catch (err) {
-      showAlert(err instanceof AuthError ? err.message : 'Đã xảy ra lỗi, thử lại sau');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Đăng ký';
-    }
-  });
-</script>
+      <div id="practice-options">
+        <div class="quiz-setup-grid">
+          <div class="form-group">
+            <label class="form-label">Cấp độ</label>
+            <select id="sel-level" class="form-select">
+              <option value="">-- Chọn cấp độ --</option>
+              <option value="N5">N5 (Sơ cấp)</option>
+              <option value="N4">N4 (Cơ bản)</option>
+              <option value="N3">N3 (Trung cấp)</option>
+              <option value="N2">N2 (Cao cấp)</option>
+              <option value="N1">N1 (Thượng cấp)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loại câu hỏi</label>
+            <select id="sel-type" class="form-select">
+              <option value="">Tất cả loại</option>
+              <option value="vocabulary">Từ vựng (文字・語彙)</option>
+              <option value="grammar">Ngữ pháp (文法)</option>
+              <option value="reading">Đọc hiểu (読解)</option>
+              <option value="listening">Nghe hiểu (聴解)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="full-exam-options" style="display:none;">
+        <div class="quiz-setup-grid">
+          <div class="form-group">
+            <label class="form-label">Cấp độ</label>
+            <select id="sel-level-full" class="form-select">
+              <option value="">-- Chọn cấp độ --</option>
+              <option value="N5">N5 — 62 câu · 105 phút</option>
+              <option value="N4">N4 — 67 câu · 115 phút</option>
+              <option value="N3">N3 — 90 câu · 140 phút</option>
+              <option value="N2">N2 — 101 câu · 155 phút</option>
+              <option value="N1">N1 — 98 câu · 170 phút</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+          Đề thi đầy đủ theo cấu trúc JLPT thực tế: từ vựng → ngữ pháp → đọc hiểu → nghe hiểu.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+        <button id="btn-start" class="btn btn-primary btn-lg" onclick="startQuiz()">▶ Bắt đầu làm bài</button>
+        <button id="btn-resume" class="btn btn-outline btn-lg" onclick="resumeQuiz()" style="display:none;">⏯ Tiếp tục làm bài</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📖 Cấu trúc đề thi JLPT</div>
+      <div style="font-size:0.88rem;line-height:1.9;color:var(--text-muted);">
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr style="background:var(--bg);">
+              <th style="padding:8px;text-align:left;border-bottom:2px solid var(--border);">Cấp độ</th>
+              <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Từ vựng</th>
+              <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Ngữ pháp</th>
+              <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Đọc hiểu</th>
+              <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Nghe hiểu</th>
+              <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Điểm đỗ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid var(--border);"><span class="badge badge-N5">N5</span></td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">25 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);" colspan="2">50 phút (gộp)</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">30 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">80/180</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid var(--border);"><span class="badge badge-N4">N4</span></td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">25 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);" colspan="2">55 phút (gộp)</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">35 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">90/180</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid var(--border);"><span class="badge badge-N3">N3</span></td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">30 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);" colspan="2">70 phút (gộp)</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">40 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">95/180</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid var(--border);"><span class="badge badge-N2">N2</span></td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);" colspan="3">105 phút (gộp)</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">50 phút</td>
+              <td style="text-align:center;padding:8px;border-bottom:1px solid var(--border);">90/180</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;"><span class="badge badge-N1">N1</span></td>
+              <td style="text-align:center;padding:8px;" colspan="3">110 phút (gộp)</td>
+              <td style="text-align:center;padding:8px;">60 phút</td>
+              <td style="text-align:center;padding:8px;">100/180</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:10px;font-size:0.78rem;">"Gộp" = Ngữ pháp và Đọc hiểu thi chung trong một phần thi.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TRANG LÀM BÀI ════ -->
+  <div id="page-quiz" class="page">
+    <div class="quiz-header">
+      <div class="quiz-progress-info">
+        <div id="quiz-progress-text" class="quiz-progress-text">Câu 1 / 10</div>
+        <div class="progress-bar-wrap">
+          <div id="quiz-progress-bar" class="progress-bar" style="width:10%"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="quiz-timer" class="timer">10:00</div>
+        <button onclick="pauseQuiz()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.8rem;cursor:pointer;color:var(--text-muted);white-space:nowrap;">⏸ Tạm dừng</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="quiz-level-badge" style="margin-bottom:12px;"></div>
+      <div id="quiz-listening-media" style="display:none;margin-bottom:12px;"></div>
+      <div id="quiz-passage" class="passage-box" style="display:none;"></div>
+      <div id="quiz-question-text" class="question-text">Đang tải câu hỏi...</div>
+      <div id="quiz-options" class="options-grid"></div>
+      <div id="quiz-explanation" class="explanation-box" style="display:none;"></div>
+      <div class="quiz-nav">
+        <button id="btn-prev" class="btn btn-outline" onclick="prevQuestion()" disabled>← Câu trước</button>
+        <button id="btn-next" class="btn btn-primary" onclick="nextQuestion()">Câu tiếp →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TRANG KẾT QUẢ ════ -->
+  <div id="page-result" class="page">
+    <div class="card result-score">
+      <div class="score-circle">
+        <div id="result-score-num" class="score-number">--</div>
+        <div class="score-label">Điểm</div>
+      </div>
+      <div id="result-grade" class="result-grade">--</div>
+      <div id="result-summary" style="color:var(--text-muted);margin-top:8px;font-size:0.9rem;">--</div>
+      <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="retryQuiz()">🔄 Làm lại</button>
+        <button class="btn btn-outline" onclick="showPage('history')">📋 Xem lịch sử</button>
+      </div>
+    </div>
+
+    <!-- Prompt for guest users to save their result -->
+    <div id="guest-save-prompt" class="card guest-save-prompt" style="display:none;">
+      <div class="guest-save-icon">💾</div>
+      <strong>Lưu kết quả này?</strong>
+      <p>Đăng nhập để lưu lịch sử và theo dõi tiến độ học của bạn.</p>
+      <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập / Đăng ký</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📝 Chi tiết đáp án</div>
+      <div id="result-answers" class="answers-list"></div>
+    </div>
+  </div>
+
+  <!-- ════ TRANG LỊCH SỬ ════ -->
+  <div id="page-history" class="page">
+    <!-- Shown to guests -->
+    <div id="history-login-required" class="card login-required-card" style="display:none;">
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <p>Đăng nhập để xem lịch sử làm bài</p>
+        <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập ngay</button>
+      </div>
+    </div>
+    <!-- Shown to logged-in users -->
+    <div id="history-content" class="card" style="display:none;">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>📋 Lịch sử làm bài</span>
+        <button class="btn btn-outline btn-sm" onclick="loadHistory()">Làm mới</button>
+      </div>
+      <div id="history-list" class="history-list">
+        <div class="empty-state"><div class="icon">📋</div><p>Đang tải...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TRANG ĐỀ THI ════ -->
+  <div id="page-exam" class="page">
+    <div class="exam-layout">
+      <!-- Sidebar: level selector -->
+      <div class="exam-sidebar">
+        <div class="exam-sidebar-title">Cấp độ</div>
+        <button class="exam-sidebar-item active" data-level="N1" onclick="selectExamLevel('N1')">N1</button>
+        <button class="exam-sidebar-item" data-level="N2" onclick="selectExamLevel('N2')">N2</button>
+        <button class="exam-sidebar-item" data-level="N3" onclick="selectExamLevel('N3')">N3</button>
+        <button class="exam-sidebar-item" data-level="N4" onclick="selectExamLevel('N4')">N4</button>
+        <button class="exam-sidebar-item" data-level="N5" onclick="selectExamLevel('N5')">N5</button>
+      </div>
+      <!-- Main: year/session grid -->
+      <div class="exam-main">
+        <div class="card">
+          <div class="card-title" id="exam-main-title">📋 Đề thi N1</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+            Chọn kỳ thi để bắt đầu. Các đề chưa có dữ liệu sẽ được cập nhật sau.
+          </p>
+          <div id="exam-year-grid" class="exam-year-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TRANG QUẢN LÝ ════ -->
+  <div id="page-admin" class="page">
+    <!-- Shown to non-superusers -->
+    <div id="admin-login-required" class="card login-required-card" style="display:none;">
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <p>Chỉ quản trị viên mới có thể truy cập trang này</p>
+        <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập</button>
+      </div>
+    </div>
+    <!-- Shown to superusers -->
+    <div id="admin-content" style="display:none;">
+
+      <!-- User management -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>👥 Quản lý người dùng</span>
+          <button class="btn btn-outline btn-sm" onclick="loadUsers()">Làm mới</button>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+          Cấp / thu hồi quyền truy cập bộ đề thi JLPT cho từng tài khoản.
+        </p>
+        <div id="users-table-wrap" style="overflow-x:auto;">
+          <div class="empty-state"><div class="icon">👥</div><p>Đang tải...</p></div>
+        </div>
+      </div>
+
+      <!-- Exam set management -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📚 Quản lý bộ đề thi</span>
+          <button class="btn btn-outline btn-sm" onclick="loadAdminExamSets()">Làm mới</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input id="es-name" class="form-select" placeholder="Tên bộ đề (VD: JLPT N3 2023 July)" style="padding:8px;">
+            <input id="es-year" class="form-select" type="number" placeholder="Năm (VD: 2023)" style="padding:8px;">
+            <select id="es-level" class="form-select">
+              <option value="">-- Cấp độ --</option>
+              <option value="N5">N5</option><option value="N4">N4</option><option value="N3">N3</option>
+              <option value="N2">N2</option><option value="N1">N1</option>
+            </select>
+            <select id="es-session" class="form-select">
+              <option value="">-- Kỳ thi --</option>
+              <option value="july">Tháng 7</option>
+              <option value="december">Tháng 12</option>
+            </select>
+          </div>
+          <input id="es-desc" class="form-select" placeholder="Mô tả (tuỳ chọn)" style="padding:8px;width:100%;margin-bottom:8px;">
+          <button class="btn btn-success btn-sm" onclick="createExamSet()">+ Tạo bộ đề</button>
+        </div>
+        <div id="admin-exam-sets-list">
+          <div class="empty-state"><div class="icon">📚</div><p>Đang tải...</p></div>
+        </div>
+      </div>
+
+      <!-- Question stats -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📊 Thống kê câu hỏi (luyện tập)</span>
+          <button class="btn btn-outline btn-sm" onclick="loadStats()">Làm mới</button>
+        </div>
+        <div id="stats-grid" class="stats-grid">
+          <div class="stat-card"><div class="stat-number">…</div><div class="stat-label">Đang tải...</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ Quản lý dữ liệu câu hỏi</div>
+        <div style="margin-bottom:20px;">
+          <div class="card-title" style="font-size:0.95rem;">📥 Dữ liệu mẫu</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+            Nạp 200+ câu hỏi mẫu mỗi cấp độ N1–N5 (từ vựng, ngữ pháp, đọc hiểu, nghe hiểu) vào cơ sở dữ liệu.
+          </p>
+          <button id="btn-seed" class="btn btn-success" onclick="loadSeedData()">📥 Nạp dữ liệu mẫu</button>
+        </div>
+
+        <!-- crawler section hidden — feature not yet ready -->
+        <div id="crawler-section" style="display:none;">
+          <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+          <div class="crawl-options">
+            <div class="form-group"><select id="crawl-source" class="form-select"><option value="dethitiengnhat">dethitiengnhat.com</option></select></div>
+            <div class="form-group"><select id="crawl-level" class="form-select"><option value="">-- Chọn --</option></select></div>
+            <div class="form-group"><select id="crawl-type" class="form-select"><option value="">Tất cả loại</option></select></div>
+            <div class="form-group"><select id="crawl-pages" class="form-select"><option value="3" selected>3 trang</option></select></div>
+          </div>
+          <button id="btn-crawl" class="btn btn-primary" onclick="startCrawl()">🕷️ Bắt đầu thu thập</button>
+          <div style="margin-top:16px;">
+            <div class="form-label">Nhật ký thực thi</div>
+            <div id="crawl-log" class="log-box"><span class="log-info">Nhật ký sẽ hiển thị ở đây...</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div id="toast" class="toast"></div>
+
+<script type="module" src="/js/jlpt.js"></script>
 </body>
 </html>

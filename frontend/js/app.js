@@ -15,7 +15,7 @@ export async function requireAuthStrict() {
   // Redirects to login page if not authenticated (use for payment.html, etc.)
   const user = await requireAuth();
   if (!user) {
-    window.location.href = '/index.html?next=' + encodeURIComponent(location.pathname);
+    window.location.href = '/login.html?next=' + encodeURIComponent(location.pathname);
     return null;
   }
   return user;
@@ -31,7 +31,7 @@ export function renderNavbar(user) {
       <span class="nav-logo">&#9889;</span> MyApp
     </div>
     <div class="nav-links">
-      <a href="/jlpt.html" class="${location.pathname.includes('jlpt') ? 'active' : ''}">&#x1F3CC; JLPT</a>
+      <a href="/" class="${location.pathname.includes('jlpt') ? 'active' : ''}">&#x1F3CC; JLPT</a>
       <a href="/dashboard.html" class="${location.pathname.includes('dashboard') ? 'active' : ''}">Dashboard</a>
       <a href="/payment.html" class="${location.pathname.includes('payment') ? 'active' : ''}">&#x1F4B3; Payment</a>
     </div>
@@ -42,11 +42,11 @@ export function renderNavbar(user) {
   `;
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await authModule.logout();
-    window.location.href = '/jlpt.html';
+    window.location.href = '/';
   });
 }
 
-// ── Floating user icon (used by jlpt.html and any page without navbar) ───────
+// ── Floating user icon (used by index.html and any page without navbar) ───────
 
 let _currentUser = null;
 export function getCurrentUser() { return _currentUser; }
@@ -84,9 +84,9 @@ function _showDropdown(user) {
       <strong>${user.username}</strong>
       <span>${user.email || ''}</span>
     </div>
-    <a href="/jlpt.html" class="uib-dd-item">&#x1F3CC; Học JLPT</a>
+    <a href="/" class="uib-dd-item">&#x1F3CC; Học JLPT</a>
     ${user.is_superuser ? '<a href="/dashboard.html" class="uib-dd-item">&#x1F4CA; Dashboard</a>' : ''}
-    ${user.is_superuser ? '<a href="/jlpt.html" class="uib-dd-item" id="uib-admin-link">&#x2699;&#xFE0F; Quản lý</a>' : ''}
+    ${user.is_superuser ? '<a href="/" class="uib-dd-item" id="uib-admin-link">&#x2699;&#xFE0F; Quản lý</a>' : ''}
     <button class="uib-dd-item uib-dd-logout" id="uib-logout">&#x1F6AA; Đăng xuất</button>
   `;
   document.body.appendChild(dd);
