@@ -127,3 +127,11 @@ class QuizStartResponse(BaseModel):
     session_id: int
     questions: list[QuestionForQuiz]
     total_minutes: Optional[int] = None   # set when full_exam=True
+
+
+class GuestQuizStartResponse(BaseModel):
+    """Response for unauthenticated guest quiz — no DB session, client scores locally."""
+    guest_token: str                       # UUID4, used as sessionStorage key
+    questions: list[QuestionForQuiz]
+    total_minutes: Optional[int] = None
+    correct_map: dict[int, str]            # {question_id: shuffled_correct_label}

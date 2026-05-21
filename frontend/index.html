@@ -126,7 +126,8 @@
   import { authModule, AuthError } from '/js/auth.js';
 
   if (authModule.isLoggedIn()) {
-    authModule.getMe().then(() => { window.location.href = '/dashboard.html'; }).catch(() => {});
+    const params = new URLSearchParams(location.search);
+    authModule.getMe().then(() => { window.location.href = params.get('next') || '/jlpt.html'; }).catch(() => {});
   }
 
   window.switchTab = (tab) => {
@@ -153,7 +154,8 @@
         document.getElementById('login-username').value.trim(),
         document.getElementById('login-password').value,
       );
-      window.location.href = '/dashboard.html';
+      const params = new URLSearchParams(location.search);
+      window.location.href = params.get('next') || '/jlpt.html';
     } catch (err) {
       showAlert(err instanceof AuthError ? err.message : 'Đã xảy ra lỗi, thử lại sau');
     } finally {

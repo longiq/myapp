@@ -1,43 +1,54 @@
-# MyApp
+# MyApp — Luyện thi JLPT
 
-Ứng dụng web full-stack tích hợp xác thực người dùng, thanh toán Stripe và quản lý hàng tồn kho.
+Ứng dụng web học tiếng Nhật theo format JLPT (N5–N1), tích hợp xác thực JWT và thanh toán Stripe.
+
+## Tính năng chính
+
+### 🎌 JLPT Learning (trang chủ)
+- Truy cập ngay không cần đăng nhập (chế độ khách)
+- Luyện tập nhanh hoặc thi thử đầy đủ theo cấu trúc JLPT thực tế
+- 4 loại câu hỏi: từ vựng, ngữ pháp, đọc hiểu, nghe hiểu (TTS tự động)
+- Cấp độ N5 → N1
+- Icon người góc phải: click để đăng nhập / xem thông tin tài khoản
+
+### 🔒 Tính năng sau khi đăng nhập
+- Lưu lịch sử làm bài và xem lại kết quả
+- Tiến độ học được theo dõi theo session
+- Truy cập trang quản trị (admin)
+- Thanh toán Stripe
+
+### 💳 Thanh toán (Stripe)
+- Tạo Payment Intent, xác nhận thanh toán
+- Quản lý Customer và Payment Method
+- Hoàn tiền (refund), webhook xử lý sự kiện
 
 ## Kiến trúc
 
 ```
 myapp/
-├── backend/          # FastAPI
+├── backend/
 │   ├── app/
-│   │   ├── auth/         # Đăng ký, đăng nhập, JWT
-│   │   ├── payment/      # Tích hợp Stripe
-│   │   ├── inventory/    # Quản lý kho (đang phát triển)
-│   │   ├── models/       # SQLAlchemy models
-│   │   └── core/         # Config, security
-│   └── stripe_payment/   # Stripe SDK wrapper
-└── frontend/         # HTML/JS thuần
-    ├── index.html        # Trang đăng nhập / đăng ký
-    ├── dashboard.html    # Trang chính sau khi đăng nhập
-    ├── payment.html      # Thanh toán qua Stripe
-    ├── inventory.html    # Quản lý kho
-    └── js/app.js         # Auth module, navbar, API helper
+│   │   ├── main.py          # FastAPI app entry
+│   │   ├── database.py      # SQLAlchemy engine + session
+│   │   ├── core/            # Config, JWT security
+│   │   ├── models/          # User model
+│   │   ├── auth/            # JWT auth module (register, login, refresh)
+│   │   ├── payment/         # Stripe payment module
+│   │   └── jlpt/            # JLPT learning module (main feature)
+│   │       ├── models.py    # Question, QuizSession, QuizAnswer
+│   │       └── routers/     # questions, quiz (guest+auth), audio, crawler
+│   └── stripe_payment/      # Stripe SDK wrapper
+└── frontend/
+    ├── jlpt.html            # Landing page (JLPT app, no auth needed)
+    ├── index.html           # Login/register page
+    ├── dashboard.html       # User hub
+    ├── payment.html         # Stripe payment
+    └── js/
+        ├── auth.js          # Token management + API calls
+        ├── auth-ui.js       # Login modal component (reusable)
+        ├── app.js           # requireAuth, renderNavbar, renderUserIcon
+        └── jlpt.js          # Quiz logic (guest + auth modes)
 ```
-
-## Tính năng
-
-### Xác thực
-- Đăng ký / đăng nhập bằng username + password
-- JWT Access Token (30 phút) + Refresh Token (7 ngày)
-- Mã hoá mật khẩu bằng bcrypt
-- Tự động refresh token phía frontend
-
-### Thanh toán (Stripe)
-- Tạo Payment Intent và xác nhận thanh toán
-- Quản lý Customer và Payment Method
-- Hoàn tiền (refund)
-- Webhook nhận sự kiện từ Stripe
-
-### Inventory
-- API endpoint bảo vệ bằng JWT (đang phát triển)
 
 ## Cài đặt & Chạy
 
@@ -49,13 +60,7 @@ myapp/
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
 ```
-
-Server chạy tại `http://localhost:8000`.  
-Frontend được serve tự động tại cùng địa chỉ.
-
-### Cấu hình `.env`
 
 Tạo file `backend/.env`:
 
@@ -71,53 +76,59 @@ STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-## API
+```bash
+uvicorn app.main:app --reload
+```
 
-Tài liệu tự động: `http://localhost:8000/api/docs`
+Server + Frontend chạy tại `http://localhost:8000`.
+API docs: `http://localhost:8000/api/docs`
+
+## API
 
 ### Auth — `/api/v1/auth`
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| POST | `/register` | Đăng ký tài khoản |
-| POST | `/login` | Đăng nhập, nhận JWT |
-| POST | `/refresh` | Làm mới access token |
-| GET | `/me` | Thông tin user hiện tại |
-| POST | `/logout` | Đăng xuất |
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| POST | `/register` | - | Đăng ký tài khoản |
+| POST | `/login` | - | Đăng nhập, nhận JWT |
+| POST | `/refresh` | - | Làm mới access token |
+| GET | `/me` | ✓ | Thông tin user hiện tại |
+| POST | `/logout` | ✓ | Đăng xuất |
+
+### JLPT — `/api/v1/jlpt`
+
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| GET | `/questions/stats/summary` | - | Thống kê câu hỏi theo cấp/loại |
+| GET | `/questions/` | - | Danh sách câu hỏi |
+| POST | `/quiz/guest-start` | - | Bắt đầu quiz không cần đăng nhập |
+| POST | `/quiz/start` | ✓ | Bắt đầu quiz (lưu lịch sử) |
+| POST | `/quiz/{id}/answer` | ✓ | Nộp câu trả lời |
+| POST | `/quiz/{id}/complete` | ✓ | Hoàn thành bài thi |
+| GET | `/quiz/{id}/result` | ✓ | Xem kết quả |
+| GET | `/quiz/history` | ✓ | Lịch sử làm bài |
+| POST | `/audio-api/generate` | - | Tạo audio TTS cho câu hỏi nghe |
+| POST | `/crawler/seed` | - | Nạp dữ liệu mẫu (admin) |
 
 ### Payment — `/api/v1/payment`
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| POST | `/create-payment-intent` | Tạo payment intent (yêu cầu đăng nhập) |
-| POST | `/customers` | Tạo customer |
-| GET | `/customers/{id}` | Lấy thông tin customer |
-| DELETE | `/customers/{id}` | Xoá customer |
-| POST | `/customers/{id}/payment-methods` | Gắn thẻ vào customer |
-| POST | `/intents` | Tạo payment intent |
-| GET | `/intents/{id}` | Lấy trạng thái payment |
-| POST | `/intents/{id}/confirm` | Xác nhận thanh toán |
-| POST | `/intents/{id}/cancel` | Huỷ thanh toán |
-| POST | `/charge` | Charge trực tiếp customer |
-| POST | `/refunds` | Hoàn tiền |
-| POST | `/webhooks/stripe` | Nhận webhook từ Stripe |
-
-### Inventory — `/api/v1/inventory`
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/` | Danh sách hàng tồn kho |
-| GET | `/stats` | Thống kê tổng quan |
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| POST | `/create-payment-intent` | ✓ | Tạo payment intent |
+| POST | `/customers` | - | Tạo customer |
+| GET | `/customers/{id}` | - | Lấy thông tin customer |
+| DELETE | `/customers/{id}` | - | Xoá customer |
+| POST | `/intents/{id}/confirm` | - | Xác nhận thanh toán |
+| POST | `/refunds` | - | Hoàn tiền |
+| POST | `/webhooks/stripe` | - | Nhận webhook từ Stripe |
 
 ## Test thanh toán
-
-Dùng thẻ test của Stripe:
 
 | Thẻ | Số thẻ |
 |-----|--------|
 | Thành công | `4242 4242 4242 4242` |
 | Bị từ chối | `4000 0000 0000 0002` |
-| Yêu cầu xác thực 3D | `4000 0025 0000 3155` |
+| Yêu cầu 3D Secure | `4000 0025 0000 3155` |
 
 Ngày hết hạn: bất kỳ ngày trong tương lai. CVC: bất kỳ 3 số.
 
@@ -127,3 +138,7 @@ Ngày hết hạn: bất kỳ ngày trong tương lai. CVC: bất kỳ 3 số.
 GET /api/health
 → {"status": "ok", "app": "MyApp"}
 ```
+
+## Tách module (tương lai)
+
+Xem `CLAUDE.md` để biết hướng dẫn tách module `auth` và `payment` sang repo khác.

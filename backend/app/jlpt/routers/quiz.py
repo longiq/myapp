@@ -1,5 +1,6 @@
 import json
 import random
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -11,6 +12,7 @@ from app.auth.dependencies import get_current_user
 from app.models.user import User
 from app.jlpt.models import Question, JlptQuizSession, JlptQuizAnswer
 from app.jlpt.schemas import (
+    GuestQuizStartResponse,
     QuestionForQuiz,
     QuizAnswerSubmit,
     QuizResult,
@@ -123,6 +125,60 @@ def quiz_history(
         .order_by(JlptQuizSession.started_at.desc())
         .limit(20)
         .all()
+    )
+
+
+@router.post("/guest-start", response_model=GuestQuizStartResponse, status_code=status.HTTP_200_OK)
+def start_guest_quiz(
+    payload: QuizSessionCreate,
+    db: Session = Depends(get_db),
+):
+    """Public quiz — no auth required. Correct answers are returned so the client can score locally."""
+    TYPE_ORDER = {"vocabulary": 0, "grammar": 1, "reading": 2, "listening": 3}
+    total_minutes: Optional[int] = None
+
+    if payload.level in JLPT_STRUCTURE:
+        structure = JLPT_STRUCTURE[payload.level]
+        if payload.full_exam:
+            total_minutes = structure["minutes"]
+        selected: list[Question] = []
+        for qtype, count in structure.items():
+            if qtype == "minutes":
+                continue
+            if payload.question_type and qtype != payload.question_type:
+                continue
+            pool = (
+                db.query(Question)
+                .filter(Question.level == payload.level, Question.question_type == qtype, Question.is_active == True)
+                .all()
+            )
+            if not pool:
+                continue
+            selected.extend(random.sample(pool, min(count, len(pool))))
+        if not selected:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No questions found.")
+        selected = sorted(selected, key=lambda q: TYPE_ORDER.get(q.question_type, 9))
+    else:
+        query = db.query(Question).filter(Question.level == payload.level, Question.is_active == True)
+        if payload.question_type:
+            query = query.filter(Question.question_type == payload.question_type)
+        all_matching = query.all()
+        if not all_matching:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No questions found.")
+        selected = sorted(random.sample(all_matching, len(all_matching)), key=lambda q: TYPE_ORDER.get(q.question_type, 9))
+
+    quiz_questions: list[QuestionForQuiz] = []
+    correct_map: dict[int, str] = {}
+    for question in selected:
+        shuffled_opts, new_correct = _shuffle_options(question)
+        quiz_questions.append(_build_question_for_quiz(question, shuffled_opts))
+        correct_map[question.id] = new_correct
+
+    return GuestQuizStartResponse(
+        guest_token=str(uuid.uuid4()),
+        questions=quiz_questions,
+        total_minutes=total_minutes,
+        correct_map=correct_map,
     )
 
 
