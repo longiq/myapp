@@ -33,10 +33,49 @@ async def lifespan(app: FastAPI):
     import app.jlpt.models  # noqa: F401 — register JLPT tables with Base
 
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
     if settings.STRIPE_SECRET_KEY:
         init_stripe(settings.STRIPE_SECRET_KEY)
     _startup_db_fixes()
     yield
+
+
+def _run_migrations() -> None:
+    """Add missing columns to existing tables (safe to run on every startup)."""
+    from sqlalchemy import inspect, text
+
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        insp = inspect(engine)
+
+        # users.has_jlpt_exam_access
+        if "users" in insp.get_table_names():
+            user_cols = {c["name"] for c in insp.get_columns("users")}
+            if "has_jlpt_exam_access" not in user_cols:
+                db.execute(
+                    text(
+                        "ALTER TABLE users ADD COLUMN has_jlpt_exam_access BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                )
+                db.commit()
+                print("[migration] Added has_jlpt_exam_access to users.")
+
+        # jlpt_questions.exam_set_id
+        if "jlpt_questions" in insp.get_table_names():
+            q_cols = {c["name"] for c in insp.get_columns("jlpt_questions")}
+            if "exam_set_id" not in q_cols:
+                db.execute(
+                    text("ALTER TABLE jlpt_questions ADD COLUMN exam_set_id INTEGER")
+                )
+                db.commit()
+                print("[migration] Added exam_set_id to jlpt_questions.")
+    except Exception as exc:
+        print(f"[migration] Failed: {exc}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 def _startup_db_fixes() -> None:
