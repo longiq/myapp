@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -23,7 +21,11 @@ def question_stats(db: Session = Depends(get_db)):
     for lvl in LEVELS:
         by_level.setdefault(lvl, 0)
 
-    type_rows = db.query(Question.question_type, func.count(Question.id)).group_by(Question.question_type).all()
+    type_rows = (
+        db.query(Question.question_type, func.count(Question.id))
+        .group_by(Question.question_type)
+        .all()
+    )
     by_type: dict[str, int] = {row[0]: row[1] for row in type_rows}
     for qt in TYPES:
         by_type.setdefault(qt, 0)
@@ -38,13 +40,18 @@ def question_stats(db: Session = Depends(get_db)):
         if lvl in by_level_type and qt in by_level_type[lvl]:
             by_level_type[lvl][qt] = cnt
 
-    return {"total": total, "by_level": by_level, "by_type": by_type, "by_level_type": by_level_type}
+    return {
+        "total": total,
+        "by_level": by_level,
+        "by_type": by_type,
+        "by_level_type": by_level_type,
+    }
 
 
 @router.get("/", response_model=list[QuestionOut])
 def list_questions(
-    level: Optional[str] = None,
-    question_type: Optional[str] = None,
+    level: str | None = None,
+    question_type: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -61,7 +68,9 @@ def list_questions(
 def get_question(question_id: int, db: Session = Depends(get_db)):
     question = db.get(Question, question_id)
     if not question:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Question {question_id} not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Question {question_id} not found."
+        )
     return question
 
 
@@ -78,6 +87,8 @@ def create_question(payload: QuestionCreate, db: Session = Depends(get_db)):
 def delete_question(question_id: int, db: Session = Depends(get_db)):
     question = db.get(Question, question_id)
     if not question:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Question {question_id} not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Question {question_id} not found."
+        )
     db.delete(question)
     db.commit()

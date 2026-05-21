@@ -1,8 +1,14 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
-    Integer, String, Text,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
@@ -15,7 +21,7 @@ class JlptExamSet(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String, nullable=False)
     year = Column(Integer, nullable=False)
-    session = Column(String, nullable=True)       # "july" | "december"
+    session = Column(String, nullable=True)  # "july" | "december"
     level = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, server_default="1")

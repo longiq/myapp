@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -12,7 +10,7 @@ router = APIRouter(tags=["jlpt-crawler"])
 
 class CrawlRequest(BaseModel):
     level: str
-    question_type: Optional[str] = None
+    question_type: str | None = None
     max_pages: int = 3
     source: str = "dethitiengnhat"
 
@@ -33,14 +31,20 @@ def run_crawler(payload: CrawlRequest, db: Session = Depends(get_db)):
     try:
         if payload.source == "lophoctiengnhat":
             from crawler.lophoctiengnhat import LophoctiengnhatCrawler
+
             crawler = LophoctiengnhatCrawler()
         else:
             from crawler.dethitiengnhat import DethitiengnhatCrawler
+
             crawler = DethitiengnhatCrawler()
     except ImportError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Crawler module not available.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Crawler module not available."
+        )
 
-    question_types = [payload.question_type] if payload.question_type else ["vocabulary", "grammar", "reading"]
+    question_types = (
+        [payload.question_type] if payload.question_type else ["vocabulary", "grammar", "reading"]
+    )
     added = 0
     skipped = 0
     errors: list[str] = []
@@ -57,23 +61,30 @@ def run_crawler(payload: CrawlRequest, db: Session = Depends(get_db)):
                 continue
             exists = (
                 db.query(Question)
-                .filter(Question.level == payload.level, Question.question_text == q["question_text"])
+                .filter(
+                    Question.level == payload.level, Question.question_text == q["question_text"]
+                )
                 .first()
             )
             if exists:
                 skipped += 1
                 continue
-            db.add(Question(
-                level=payload.level, question_type=qtype,
-                question_text=q.get("question_text", ""),
-                passage=q.get("passage"),
-                option_a=q.get("option_a", ""), option_b=q.get("option_b", ""),
-                option_c=q.get("option_c", ""), option_d=q.get("option_d", ""),
-                correct_answer=q.get("correct_answer", "A"),
-                explanation=q.get("explanation"),
-                source_url=q.get("source_url"),
-                audio_url=q.get("audio_url"),
-            ))
+            db.add(
+                Question(
+                    level=payload.level,
+                    question_type=qtype,
+                    question_text=q.get("question_text", ""),
+                    passage=q.get("passage"),
+                    option_a=q.get("option_a", ""),
+                    option_b=q.get("option_b", ""),
+                    option_c=q.get("option_c", ""),
+                    option_d=q.get("option_d", ""),
+                    correct_answer=q.get("correct_answer", "A"),
+                    explanation=q.get("explanation"),
+                    source_url=q.get("source_url"),
+                    audio_url=q.get("audio_url"),
+                )
+            )
             added += 1
 
     if added:
@@ -86,7 +97,10 @@ def load_seed_data(db: Session = Depends(get_db)):
     try:
         from crawler.seed_data import get_seed_questions
     except ImportError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Seed data module not available.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Seed data module not available.",
+        )
 
     questions = get_seed_questions()
     added = 0
@@ -103,4 +117,6 @@ def load_seed_data(db: Session = Depends(get_db)):
 
     if added:
         db.commit()
-    return SeedResponse(added=added, message=f"Đã thêm {added} câu hỏi." if added else "Không có câu hỏi mới.")
+    return SeedResponse(
+        added=added, message=f"Đã thêm {added} câu hỏi." if added else "Không có câu hỏi mới."
+    )

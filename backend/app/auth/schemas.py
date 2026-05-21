@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -7,7 +7,7 @@ class UserRegister(BaseModel):
     username: str
     email: EmailStr
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
     @field_validator("username")
     @classmethod
@@ -51,7 +51,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_superuser: bool
     has_jlpt_exam_access: bool = False
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
     model_config = {"from_attributes": True}
 

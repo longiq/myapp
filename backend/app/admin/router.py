@@ -1,12 +1,10 @@
 import json
-import os
 import shutil
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -28,7 +26,7 @@ class UserAdminOut(BaseModel):
     id: int
     username: str
     email: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     is_active: bool
     is_superuser: bool
     has_jlpt_exam_access: bool
@@ -43,18 +41,18 @@ class JlptAccessPatch(BaseModel):
 class ExamSetCreate(BaseModel):
     name: str
     year: int
-    session: Optional[str] = None
+    session: str | None = None
     level: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ExamSetOut(BaseModel):
     id: int
     name: str
     year: int
-    session: Optional[str] = None
+    session: str | None = None
     level: str
-    description: Optional[str] = None
+    description: str | None = None
     is_active: bool
     question_count: int = 0
 
@@ -64,7 +62,7 @@ class ExamSetOut(BaseModel):
 # ── User management ────────────────────────────────────────────────────────
 
 
-@router.get("/users", response_model=List[UserAdminOut])
+@router.get("/users", response_model=list[UserAdminOut])
 def get_users(
     skip: int = 0,
     limit: int = 100,
@@ -90,7 +88,7 @@ def set_jlpt_access(
 # ── Exam set management ────────────────────────────────────────────────────
 
 
-@router.get("/exam-sets", response_model=List[ExamSetOut])
+@router.get("/exam-sets", response_model=list[ExamSetOut])
 def get_exam_sets(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_superuser),
@@ -99,11 +97,18 @@ def get_exam_sets(
     result = []
     for s in sets:
         count = db.query(Question).filter(Question.exam_set_id == s.id).count()
-        result.append(ExamSetOut(
-            id=s.id, name=s.name, year=s.year, session=s.session,
-            level=s.level, description=s.description, is_active=s.is_active,
-            question_count=count,
-        ))
+        result.append(
+            ExamSetOut(
+                id=s.id,
+                name=s.name,
+                year=s.year,
+                session=s.session,
+                level=s.level,
+                description=s.description,
+                is_active=s.is_active,
+                question_count=count,
+            )
+        )
     return result
 
 
@@ -117,7 +122,14 @@ def create_exam_set(
     db.add(exam_set)
     db.commit()
     db.refresh(exam_set)
-    return ExamSetOut(**{**body.model_dump(), "id": exam_set.id, "is_active": exam_set.is_active, "question_count": 0})
+    return ExamSetOut(
+        **{
+            **body.model_dump(),
+            "id": exam_set.id,
+            "is_active": exam_set.is_active,
+            "question_count": 0,
+        }
+    )
 
 
 @router.patch("/exam-sets/{exam_set_id}", response_model=ExamSetOut)
@@ -136,8 +148,13 @@ def update_exam_set(
     db.refresh(exam_set)
     count = db.query(Question).filter(Question.exam_set_id == exam_set_id).count()
     return ExamSetOut(
-        id=exam_set.id, name=exam_set.name, year=exam_set.year, session=exam_set.session,
-        level=exam_set.level, description=exam_set.description, is_active=exam_set.is_active,
+        id=exam_set.id,
+        name=exam_set.name,
+        year=exam_set.year,
+        session=exam_set.session,
+        level=exam_set.level,
+        description=exam_set.description,
+        is_active=exam_set.is_active,
         question_count=count,
     )
 
@@ -187,7 +204,15 @@ async def import_questions(
     added = 0
     skipped = 0
     for q in questions_data:
-        required = {"question_type", "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer"}
+        required = {
+            "question_type",
+            "question_text",
+            "option_a",
+            "option_b",
+            "option_c",
+            "option_d",
+            "correct_answer",
+        }
         if not required.issubset(q.keys()):
             skipped += 1
             continue

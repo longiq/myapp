@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 from enum import Enum
 
 
@@ -30,7 +29,7 @@ class CardDetails:
     exp_month: int
     exp_year: int
     cvc: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 @dataclass
@@ -38,17 +37,17 @@ class Address:
     line1: str
     city: str
     country: str
-    line2: Optional[str] = None
-    postal_code: Optional[str] = None
-    state: Optional[str] = None
+    line2: str | None = None
+    postal_code: str | None = None
+    state: str | None = None
 
 
 @dataclass
 class CustomerData:
     email: str
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[Address] = None
+    name: str | None = None
+    phone: str | None = None
+    address: Address | None = None
     metadata: dict = field(default_factory=dict)
 
 
@@ -58,10 +57,10 @@ class PaymentResult:
     status: PaymentStatus
     amount: int
     currency: str
-    customer_id: Optional[str] = None
-    payment_method_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    receipt_url: Optional[str] = None
+    customer_id: str | None = None
+    payment_method_id: str | None = None
+    client_secret: str | None = None
+    receipt_url: str | None = None
     metadata: dict = field(default_factory=dict)
 
     @property
@@ -75,8 +74,8 @@ class PaymentResult:
 class CustomerResult:
     customer_id: str
     email: str
-    name: Optional[str] = None
-    payment_method_id: Optional[str] = None
+    name: str | None = None
+    payment_method_id: str | None = None
     metadata: dict = field(default_factory=dict)
 
 

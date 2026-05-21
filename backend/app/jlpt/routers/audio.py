@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import os
 import ssl
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -39,6 +38,7 @@ async def _tts(text: str, voice: str, out_path: str) -> None:
     try:
         import edge_tts
         import edge_tts.communicate as _ec
+
         _ctx = ssl.create_default_context()
         _ctx.check_hostname = False
         _ctx.verify_mode = ssl.CERT_NONE
@@ -61,7 +61,9 @@ async def generate_audio(payload: AudioGenerateRequest, db: Session = Depends(ge
         try:
             await _tts(payload.text, payload.voice, out_path)
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Không thể tạo audio: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Không thể tạo audio: {e}"
+            )
 
     question = db.get(Question, payload.question_id)
     if question and (not question.audio_url or not question.is_active):

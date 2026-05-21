@@ -10,7 +10,6 @@ Each question in a set shares the same `passage` field.
 
 from __future__ import annotations
 
-
 # ---------------------------------------------------------------------------
 # N2 長文読解 — テーマ: AIと働き方の変化
 # (3 questions, shared passage)
@@ -278,6 +277,7 @@ _N1_LONG_2: list[dict] = [
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def get_long_reading_questions() -> list[dict]:
     return _N2_LONG_1 + _N2_LONG_2 + _N1_LONG_1 + _N1_LONG_2

@@ -1,5 +1,5 @@
-import time
 import logging
+import time
 from abc import ABC, abstractmethod
 
 import requests
@@ -41,8 +41,7 @@ class BaseCrawler(ABC):
             "Chrome/120.0.0.0 Safari/537.36"
         ),
         "Accept": (
-            "text/html,application/xhtml+xml,application/xml;"
-            "q=0.9,image/avif,image/webp,*/*;q=0.8"
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
         ),
         "Accept-Language": "ja,en-US;q=0.9,en;q=0.8,vi;q=0.7",
         "Accept-Encoding": "gzip, deflate, br",

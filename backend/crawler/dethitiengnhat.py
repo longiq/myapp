@@ -9,7 +9,6 @@ markup has changed, the crawler returns an empty list rather than crashing.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from bs4 import BeautifulSoup, Tag
 
@@ -64,7 +63,8 @@ ANSWER_LABELS = ("A", "B", "C", "D")
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
-def _clean(text: Optional[str]) -> str:
+
+def _clean(text: str | None) -> str:
     """Strip and collapse internal whitespace in *text*."""
     if not text:
         return ""
@@ -107,7 +107,7 @@ def _parse_question_block(
     source_url: str,
     level: str,
     question_type: str,
-) -> Optional[dict]:
+) -> dict | None:
     """
     Attempt to build a question dict from a single HTML *block*.
 
@@ -204,8 +204,7 @@ def _parse_page(
 
         if questions:
             print(
-                f"[dethitiengnhat] parsed {len(questions)} question(s) "
-                f"with selector '{selector}'"
+                f"[dethitiengnhat] parsed {len(questions)} question(s) with selector '{selector}'"
             )
             break
         else:
@@ -220,6 +219,7 @@ def _parse_page(
 # ---------------------------------------------------------------------------
 # Main crawler class
 # ---------------------------------------------------------------------------
+
 
 class DethitiengnhatCrawler(BaseCrawler):
     """Crawler targeting https://dethitiengnhat.com."""
@@ -283,10 +283,7 @@ class DethitiengnhatCrawler(BaseCrawler):
             page_questions = _parse_page(soup, url, level, question_type)
 
             if not page_questions:
-                print(
-                    f"[dethitiengnhat] no questions found on page {page}; "
-                    f"stopping pagination"
-                )
+                print(f"[dethitiengnhat] no questions found on page {page}; stopping pagination")
                 break
 
             # Deduplicate across pages by question stem text.

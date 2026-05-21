@@ -1,19 +1,19 @@
-from typing import Optional
 from sqlalchemy.orm import Session
-from app.models.user import User
-from app.core.security import hash_password, verify_password
+
 from app.auth.schemas import UserRegister
+from app.core.security import hash_password, verify_password
+from app.models.user import User
 
 
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
+def get_user_by_username(db: Session, username: str) -> User | None:
     return db.query(User).filter(User.username == username).first()
 
 
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
+def get_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()
 
 
-def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
+def get_user_by_id(db: Session, user_id: int) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
 
 
@@ -30,14 +30,14 @@ def create_user(db: Session, data: UserRegister) -> User:
     return user
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
+def authenticate_user(db: Session, username: str, password: str) -> User | None:
     user = get_user_by_username(db, username)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
 
-def update_user(db: Session, user_id: int, **fields) -> Optional[User]:
+def update_user(db: Session, user_id: int, **fields) -> User | None:
     user = get_user_by_id(db, user_id)
     if not user:
         return None
