@@ -131,9 +131,11 @@
 </main>
 
 <script type="module">
-  import { requireAuth, renderNavbar } from '/js/app.js';
-  const user = await requireAuth();
-  if (user) {
+  import { requireAuthStrict, renderNavbar } from '/js/app.js';
+  const user = await requireAuthStrict();
+  if (!user.is_superuser) {
+    window.location.href = '/jlpt.html';
+  } else {
     renderNavbar(user);
     document.getElementById('greeting-text').textContent = `Xin chào, ${user.username}! 👋`;
   }

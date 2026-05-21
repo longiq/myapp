@@ -1,3 +1,4 @@
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.database import Base, engine
+from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
 from app.payment.router import router as payment_router
 from app.payment.exception_handlers import EXCEPTION_HANDLERS
@@ -40,8 +42,18 @@ def _startup_db_fixes() -> None:
     """Run on every startup: fix existing records and seed any missing questions."""
     from app.database import SessionLocal
     from app.jlpt.models import Question
+    from app.models.user import User
     db = SessionLocal()
     try:
+        # 0. Ensure the admin account has superuser privileges
+        admin_username = os.environ.get("ADMIN_USERNAME", "")
+        if admin_username:
+            admin = db.query(User).filter(User.username == admin_username).first()
+            if admin and not admin.is_superuser:
+                admin.is_superuser = True
+                db.commit()
+                print(f"[startup] Granted superuser to admin account.")
+
         # 1. Activate any listening questions that were seeded with is_active=False
         updated = (
             db.query(Question)
@@ -99,6 +111,7 @@ app.add_middleware(
 for exc_class, handler in EXCEPTION_HANDLERS.items():
     app.add_exception_handler(exc_class, handler)
 
+app.include_router(admin_router,          prefix="/api/v1")
 app.include_router(auth_router,           prefix="/api/v1")
 app.include_router(jlpt_questions_router, prefix="/api/v1/jlpt/questions")
 app.include_router(jlpt_quiz_router,      prefix="/api/v1/jlpt/quiz")
@@ -112,9 +125,9 @@ def health():
     return {"status": "ok", "app": settings.APP_NAME}
 
 
-# Serve JLPT static media (audio / images) — must be before the root frontend mount
+# Serve JLPT static media (audio / images / exam-sets) — must be before the root frontend mount
 _STATIC_ROOT = Path(__file__).resolve().parent.parent.parent / "static"
-for _subdir, _mount_path in [("audio", "/audio"), ("images", "/images")]:
+for _subdir, _mount_path in [("audio", "/audio"), ("images", "/images"), ("exam-sets", "/exam-sets")]:
     _media_dir = _STATIC_ROOT / _subdir
     _media_dir.mkdir(parents=True, exist_ok=True)
     app.mount(_mount_path, StaticFiles(directory=str(_media_dir)), name=_subdir)

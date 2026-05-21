@@ -135,3 +135,30 @@ class GuestQuizStartResponse(BaseModel):
     questions: list[QuestionForQuiz]
     total_minutes: Optional[int] = None
     correct_map: dict[int, str]            # {question_id: shuffled_correct_label}
+
+
+# ---------------------------------------------------------------------------
+# Exam set schemas
+# ---------------------------------------------------------------------------
+
+class ExamSetOut(BaseModel):
+    id: int
+    name: str
+    year: int
+    session: Optional[str] = None
+    level: str
+    description: Optional[str] = None
+    question_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExamQuizCreate(BaseModel):
+    exam_set_id: int
+
+
+class ExamQuizStartResponse(BaseModel):
+    session_id: int
+    exam_set_id: int
+    questions: list[QuestionForQuiz]
+    total_minutes: Optional[int] = None

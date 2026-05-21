@@ -50,6 +50,7 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     is_superuser: bool
+    has_jlpt_exam_access: bool = False
     full_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

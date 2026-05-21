@@ -30,9 +30,11 @@ myapp/
 │   │   │   ├── router.py        # /api/v1/payment
 │   │   │   ├── schemas.py
 │   │   │   └── exception_handlers.py
+│   │   ├── admin/               # Admin management module
+│   │   │   └── router.py        # /api/v1/admin (superuser only)
 │   │   └── jlpt/                # JLPT learning module (main app)
-│   │       ├── models.py        # Question, JlptQuizSession, JlptQuizAnswer
-│   │       ├── schemas.py       # Pydantic schemas incl. GuestQuizStartResponse
+│   │       ├── models.py        # Question, JlptQuizSession, JlptQuizAnswer, JlptExamSet
+│   │       ├── schemas.py       # Pydantic schemas incl. GuestQuizStartResponse, ExamSetOut
 │   │       └── routers/
 │   │           ├── questions.py # public question listing & stats
 │   │           ├── quiz.py      # quiz sessions (guest-start public, rest auth)
@@ -49,7 +51,7 @@ myapp/
 └── frontend/
     ├── jlpt.html                # Main landing page (no auth required)
     ├── index.html               # Standalone login/register page
-    ├── dashboard.html           # User hub (auth required)
+    ├── dashboard.html           # Admin hub (superuser only — redirects others)
     ├── payment.html             # Stripe payment (auth required)
     ├── css/jlpt.css
     └── js/
@@ -83,7 +85,65 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_VERIFY_SSL=true
+ADMIN_USERNAME=<admin-account-username>
 ```
+
+## Admin & Permissions
+
+### User roles
+- `is_superuser = True` — full admin access: dashboard, admin panel, all exam sets
+- `has_jlpt_exam_access = True` — can view/take restricted JLPT exam sets
+- Default user — public practice questions only
+
+### Admin account setup
+On every startup, `_startup_db_fixes()` reads `ADMIN_USERNAME` env var and grants `is_superuser=True`
+to that account if not already set. Set this in `.env` (not hardcoded in source).
+
+### Dashboard protection
+`dashboard.html` requires `is_superuser=True`. Non-admin users are redirected to `/jlpt.html`.
+Guests are redirected to `/index.html`.
+
+### Admin API (`/api/v1/admin/*`) — superuser only
+```
+GET  /admin/users                       — list all users
+PATCH /admin/users/{id}/jlpt-access     — {grant: bool} toggle exam access
+GET  /admin/exam-sets                   — list all exam sets (incl. inactive)
+POST /admin/exam-sets                   — create exam set
+PATCH /admin/exam-sets/{id}             — update exam set info
+POST /admin/exam-sets/{id}/import       — import questions from JSON file
+POST /admin/exam-sets/{id}/upload-media — upload zip with images/audio
+```
+
+### JLPT Exam Set API (`/api/v1/jlpt/quiz/*`) — requires auth + has_jlpt_exam_access
+```
+GET  /jlpt/quiz/exam-sets               — list active exam sets
+POST /jlpt/quiz/exam-start              — {exam_set_id: int} start exam session
+```
+Superusers bypass the `has_jlpt_exam_access` check automatically.
+
+### Exam Set data import format (JSON)
+```json
+{
+  "questions": [
+    {
+      "question_type": "vocabulary",
+      "question_text": "問題文...",
+      "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...",
+      "correct_answer": "A",
+      "explanation": "Giải thích...",
+      "passage": "",
+      "image_url": "/exam-sets/1/images/q001.jpg",
+      "audio_url": "/exam-sets/1/audio/q001.mp3"
+    }
+  ]
+}
+```
+Upload images/audio first via `/admin/exam-sets/{id}/upload-media` (zip file),
+then reference paths in the JSON import. Media stored at `static/exam-sets/{id}/`.
+
+### Question segregation
+- Practice questions: `exam_set_id IS NULL` — used by `/quiz/start` and `/quiz/guest-start`
+- Exam set questions: `exam_set_id = <id>` — used by `/quiz/exam-start` (restricted)
 
 ## Adding a new FastAPI router
 

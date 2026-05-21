@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models.user import User
-from app.jlpt.models import Question, JlptQuizSession, JlptQuizAnswer
+from app.jlpt.models import JlptExamSet, Question, JlptQuizSession, JlptQuizAnswer
 from app.jlpt.schemas import (
+    ExamQuizCreate,
+    ExamQuizStartResponse,
+    ExamSetOut,
     GuestQuizStartResponse,
     QuestionForQuiz,
     QuizAnswerSubmit,
@@ -149,7 +152,12 @@ def start_guest_quiz(
                 continue
             pool = (
                 db.query(Question)
-                .filter(Question.level == payload.level, Question.question_type == qtype, Question.is_active == True)
+                .filter(
+                    Question.level == payload.level,
+                    Question.question_type == qtype,
+                    Question.is_active == True,
+                    Question.exam_set_id == None,
+                )
                 .all()
             )
             if not pool:
@@ -159,7 +167,10 @@ def start_guest_quiz(
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No questions found.")
         selected = sorted(selected, key=lambda q: TYPE_ORDER.get(q.question_type, 9))
     else:
-        query = db.query(Question).filter(Question.level == payload.level, Question.is_active == True)
+        query = (
+            db.query(Question)
+            .filter(Question.level == payload.level, Question.is_active == True, Question.exam_set_id == None)
+        )
         if payload.question_type:
             query = query.filter(Question.question_type == payload.question_type)
         all_matching = query.all()
@@ -205,7 +216,12 @@ def start_quiz(
                 continue
             pool = (
                 db.query(Question)
-                .filter(Question.level == payload.level, Question.question_type == qtype, Question.is_active == True)
+                .filter(
+                    Question.level == payload.level,
+                    Question.question_type == qtype,
+                    Question.is_active == True,
+                    Question.exam_set_id == None,
+                )
                 .all()
             )
             if not pool:
@@ -216,7 +232,10 @@ def start_quiz(
         selected = sorted(selected, key=lambda q: TYPE_ORDER.get(q.question_type, 9))
         num = len(selected)
     else:
-        query = db.query(Question).filter(Question.level == payload.level, Question.is_active == True)
+        query = (
+            db.query(Question)
+            .filter(Question.level == payload.level, Question.is_active == True, Question.exam_set_id == None)
+        )
         if payload.question_type:
             query = query.filter(Question.question_type == payload.question_type)
         all_matching = query.all()
@@ -323,3 +342,93 @@ def get_result(
     if session.completed_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session not completed yet.")
     return _build_result(session, db)
+
+
+# ── Exam set endpoints (restricted) ────────────────────────────────────────
+
+
+def _check_exam_access(user: User) -> None:
+    if not user.has_jlpt_exam_access and not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn chưa được cấp quyền truy cập bộ đề thi.",
+        )
+
+
+@router.get("/exam-sets", response_model=list[ExamSetOut])
+def list_exam_sets(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _check_exam_access(current_user)
+    sets = db.query(JlptExamSet).filter(JlptExamSet.is_active == True).order_by(
+        JlptExamSet.year.desc(), JlptExamSet.level
+    ).all()
+    result = []
+    for s in sets:
+        count = db.query(Question).filter(Question.exam_set_id == s.id).count()
+        result.append(ExamSetOut(
+            id=s.id, name=s.name, year=s.year, session=s.session,
+            level=s.level, description=s.description, question_count=count,
+        ))
+    return result
+
+
+@router.post("/exam-start", response_model=ExamQuizStartResponse, status_code=status.HTTP_201_CREATED)
+def start_exam_quiz(
+    payload: ExamQuizCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _check_exam_access(current_user)
+
+    exam_set = db.query(JlptExamSet).filter(
+        JlptExamSet.id == payload.exam_set_id, JlptExamSet.is_active == True
+    ).first()
+    if not exam_set:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bộ đề không tồn tại.")
+
+    TYPE_ORDER = {"vocabulary": 0, "grammar": 1, "reading": 2, "listening": 3}
+    questions = (
+        db.query(Question)
+        .filter(Question.exam_set_id == payload.exam_set_id, Question.is_active == True)
+        .all()
+    )
+    if not questions:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Bộ đề chưa có câu hỏi.")
+
+    questions = sorted(questions, key=lambda q: TYPE_ORDER.get(q.question_type, 9))
+    total_minutes = JLPT_STRUCTURE.get(exam_set.level, {}).get("minutes")
+    num = len(questions)
+
+    session = JlptQuizSession(
+        user_id=current_user.id,
+        level=exam_set.level,
+        question_type=None,
+        num_questions=num,
+        total_questions=num,
+        correct_count=0,
+        session_questions=json.dumps([q.id for q in questions]),
+    )
+    db.add(session)
+    db.flush()
+
+    quiz_questions: list[QuestionForQuiz] = []
+    for question in questions:
+        shuffled_opts, new_correct = _shuffle_options(question)
+        db.add(JlptQuizAnswer(
+            session_id=session.id,
+            question_id=question.id,
+            user_answer=None,
+            is_correct=None,
+            shuffled_correct=new_correct,
+        ))
+        quiz_questions.append(_build_question_for_quiz(question, shuffled_opts))
+
+    db.commit()
+    return ExamQuizStartResponse(
+        session_id=session.id,
+        exam_set_id=payload.exam_set_id,
+        questions=quiz_questions,
+        total_minutes=total_minutes,
+    )
