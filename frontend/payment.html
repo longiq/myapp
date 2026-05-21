@@ -123,11 +123,11 @@
 </main>
 
 <script type="module">
-  import { requireAuth, renderNavbar, authModule } from '/js/app.js';
+  import { requireAuthStrict, renderNavbar, authModule } from '/js/app.js';
 
   const PUBLISHABLE_KEY = 'pk_test_51TR7f9IRuDw1vq3TEGlJegq9P5QGL7h3qhtbUujofG9vOstnus6ElSMlyYgYafMKDCR0A6dy2MnOSbB2dS5pVQQk008C1At0D3';
 
-  const user = await requireAuth();
+  const user = await requireAuthStrict();
   if (!user) throw new Error('Not authenticated');
   renderNavbar(user);
 

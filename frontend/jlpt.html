@@ -6,30 +6,10 @@
   <title>JLPT – MyApp</title>
   <link rel="stylesheet" href="/css/jlpt.css">
   <style>
-    /* MyApp navbar override — sits above jlpt header */
-    #navbar {
-      background: #fff; border-bottom: 1px solid #e5e7eb;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: .9rem 2rem; position: sticky; top: 0; z-index: 200;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    .nav-brand { display: flex; align-items: center; gap: .5rem; font-size: 1.2rem; font-weight: 700; color: #1a1a2e; }
-    .nav-logo { font-size: 1.4rem; }
-    .nav-links { display: flex; gap: 1.5rem; }
-    .nav-links a { text-decoration: none; color: #6b7280; font-weight: 500; font-size: .95rem; padding: .3rem .5rem; border-radius: 6px; transition: all .2s; }
-    .nav-links a:hover, .nav-links a.active { color: #4f46e5; background: #ede9fe; }
-    .nav-user { display: flex; align-items: center; gap: 1rem; }
-    .nav-username { font-size: .9rem; color: #374151; font-weight: 500; }
-    .btn-logout { padding: .4rem .9rem; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: .875rem; cursor: pointer; transition: all .2s; }
-    .btn-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-    /* Push jlpt header below navbar */
-    .header { position: sticky; top: 57px; }
+    .header { position: sticky; top: 0; }
   </style>
 </head>
 <body>
-
-<nav id="navbar"></nav>
 
 <!-- JLPT Header -->
 <div class="header">
@@ -56,6 +36,18 @@
     <div class="hero">
       <h2>Luyện thi JLPT</h2>
       <p>Thử sức với đề thi ngữ pháp, từ vựng và đọc hiểu từ N5 đến N1</p>
+    </div>
+
+    <!-- Guest mode banner (hidden for logged-in users) -->
+    <div id="guest-banner" class="card guest-banner" style="display:none;">
+      <span class="guest-banner-icon">💡</span>
+      <div class="guest-banner-text">
+        <strong>Bạn đang dùng chế độ khách</strong>
+        <span>Kết quả sẽ không được lưu.
+          <button class="btn-link" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập</button>
+          để lưu lịch sử và tiến độ học.
+        </span>
+      </div>
     </div>
 
     <div class="card">
@@ -210,6 +202,15 @@
         <button class="btn btn-outline" onclick="showPage('history')">📋 Xem lịch sử</button>
       </div>
     </div>
+
+    <!-- Prompt for guest users to save their result -->
+    <div id="guest-save-prompt" class="card guest-save-prompt" style="display:none;">
+      <div class="guest-save-icon">💾</div>
+      <strong>Lưu kết quả này?</strong>
+      <p>Đăng nhập để lưu lịch sử và theo dõi tiến độ học của bạn.</p>
+      <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập / Đăng ký</button>
+    </div>
+
     <div class="card">
       <div class="card-title">📝 Chi tiết đáp án</div>
       <div id="result-answers" class="answers-list"></div>
@@ -218,7 +219,16 @@
 
   <!-- ════ TRANG LỊCH SỬ ════ -->
   <div id="page-history" class="page">
-    <div class="card">
+    <!-- Shown to guests -->
+    <div id="history-login-required" class="card login-required-card" style="display:none;">
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <p>Đăng nhập để xem lịch sử làm bài</p>
+        <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập ngay</button>
+      </div>
+    </div>
+    <!-- Shown to logged-in users -->
+    <div id="history-content" class="card" style="display:none;">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>📋 Lịch sử làm bài</span>
         <button class="btn btn-outline btn-sm" onclick="loadHistory()">Làm mới</button>
@@ -231,39 +241,50 @@
 
   <!-- ════ TRANG QUẢN LÝ ════ -->
   <div id="page-admin" class="page">
-    <div class="card">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>📊 Thống kê câu hỏi</span>
-        <button class="btn btn-outline btn-sm" onclick="loadStats()">Làm mới</button>
-      </div>
-      <div id="stats-grid" class="stats-grid">
-        <div class="stat-card"><div class="stat-number">…</div><div class="stat-label">Đang tải...</div></div>
+    <!-- Shown to non-superusers -->
+    <div id="admin-login-required" class="card login-required-card" style="display:none;">
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <p>Chỉ quản trị viên mới có thể truy cập trang này</p>
+        <button class="btn btn-primary" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập</button>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-title">⚙️ Quản lý dữ liệu câu hỏi</div>
-      <div style="margin-bottom:20px;">
-        <div class="card-title" style="font-size:0.95rem;">📥 Dữ liệu mẫu</div>
-        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
-          Nạp 200+ câu hỏi mẫu mỗi cấp độ N1–N5 (từ vựng, ngữ pháp, đọc hiểu, nghe hiểu) vào cơ sở dữ liệu.
-        </p>
-        <button id="btn-seed" class="btn btn-success" onclick="loadSeedData()">📥 Nạp dữ liệu mẫu</button>
+    <!-- Shown to superusers -->
+    <div id="admin-content" style="display:none;">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📊 Thống kê câu hỏi</span>
+          <button class="btn btn-outline btn-sm" onclick="loadStats()">Làm mới</button>
+        </div>
+        <div id="stats-grid" class="stats-grid">
+          <div class="stat-card"><div class="stat-number">…</div><div class="stat-label">Đang tải...</div></div>
+        </div>
       </div>
 
-      <!-- crawler section hidden — feature not yet ready -->
-      <div id="crawler-section" style="display:none;">
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-        <div class="crawl-options">
-          <div class="form-group"><select id="crawl-source" class="form-select"><option value="dethitiengnhat">dethitiengnhat.com</option></select></div>
-          <div class="form-group"><select id="crawl-level" class="form-select"><option value="">-- Chọn --</option></select></div>
-          <div class="form-group"><select id="crawl-type" class="form-select"><option value="">Tất cả loại</option></select></div>
-          <div class="form-group"><select id="crawl-pages" class="form-select"><option value="3" selected>3 trang</option></select></div>
+      <div class="card">
+        <div class="card-title">⚙️ Quản lý dữ liệu câu hỏi</div>
+        <div style="margin-bottom:20px;">
+          <div class="card-title" style="font-size:0.95rem;">📥 Dữ liệu mẫu</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+            Nạp 200+ câu hỏi mẫu mỗi cấp độ N1–N5 (từ vựng, ngữ pháp, đọc hiểu, nghe hiểu) vào cơ sở dữ liệu.
+          </p>
+          <button id="btn-seed" class="btn btn-success" onclick="loadSeedData()">📥 Nạp dữ liệu mẫu</button>
         </div>
-        <button id="btn-crawl" class="btn btn-primary" onclick="startCrawl()">🕷️ Bắt đầu thu thập</button>
-        <div style="margin-top:16px;">
-          <div class="form-label">Nhật ký thực thi</div>
-          <div id="crawl-log" class="log-box"><span class="log-info">Nhật ký sẽ hiển thị ở đây...</span></div>
+
+        <!-- crawler section hidden — feature not yet ready -->
+        <div id="crawler-section" style="display:none;">
+          <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+          <div class="crawl-options">
+            <div class="form-group"><select id="crawl-source" class="form-select"><option value="dethitiengnhat">dethitiengnhat.com</option></select></div>
+            <div class="form-group"><select id="crawl-level" class="form-select"><option value="">-- Chọn --</option></select></div>
+            <div class="form-group"><select id="crawl-type" class="form-select"><option value="">Tất cả loại</option></select></div>
+            <div class="form-group"><select id="crawl-pages" class="form-select"><option value="3" selected>3 trang</option></select></div>
+          </div>
+          <button id="btn-crawl" class="btn btn-primary" onclick="startCrawl()">🕷️ Bắt đầu thu thập</button>
+          <div style="margin-top:16px;">
+            <div class="form-label">Nhật ký thực thi</div>
+            <div id="crawl-log" class="log-box"><span class="log-info">Nhật ký sẽ hiển thị ở đây...</span></div>
+          </div>
         </div>
       </div>
     </div>

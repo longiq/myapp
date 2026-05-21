@@ -471,3 +471,43 @@ body {
   .timer { align-self: flex-end; }
   .nav-tab { padding: 10px 12px; font-size: 0.82rem; }
 }
+
+/* ── Guest banner (home page) ── */
+.guest-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 14px 18px;
+}
+.guest-banner-icon { font-size: 1.4rem; flex-shrink: 0; }
+.guest-banner-text { font-size: 0.875rem; color: #1e40af; line-height: 1.5; }
+.guest-banner-text strong { display: block; margin-bottom: 2px; }
+.btn-link {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  padding: 0;
+  font-family: inherit;
+}
+.btn-link:hover { color: #1d4ed8; }
+
+/* ── Login required card (history / admin) ── */
+.login-required-card .empty-state { padding: 40px 20px; }
+.login-required-card .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.login-required-card .empty-state p { color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem; }
+
+/* ── Guest save prompt (result page) ── */
+.guest-save-prompt {
+  text-align: center;
+  padding: 24px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.guest-save-icon { font-size: 2rem; margin-bottom: 8px; }
+.guest-save-prompt strong { display: block; font-size: 1rem; color: #15803d; margin-bottom: 6px; }
+.guest-save-prompt p { font-size: 0.85rem; color: #166534; margin-bottom: 16px; }

@@ -1,13 +1,13 @@
-import { requireAuth, renderNavbar } from './app.js';
+import { requireAuth, renderUserIcon } from './app.js';
+import { showLoginModal } from './auth-ui.js';
+
+// Expose for inline onclick handlers in HTML
+window.showLoginModal = showLoginModal;
 
 const API = '/api/v1/jlpt';
 
-// ── Auth ───────────────────────────────────────────────
-let _token = null;
-
-function getToken() {
-  return localStorage.getItem('access_token');
-}
+// ── Auth helper ────────────────────────────────────────
+function getToken() { return localStorage.getItem('access_token'); }
 
 // ── State ──────────────────────────────────────────────
 const state = {
@@ -30,6 +30,13 @@ const state = {
   stats: null,
 };
 
+// Guest state — client-side quiz tracking for unauthenticated users
+const guestState = {
+  active: false,
+  guestToken: null,
+  correctMap: {},  // {question_id: shuffled_correct_label}
+};
+
 // ── Navigation ─────────────────────────────────────────
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -37,11 +44,33 @@ function showPage(name) {
   document.getElementById(`page-${name}`)?.classList.add('active');
   document.querySelector(`.nav-tab[data-page="${name}"]`)?.classList.add('active');
   state.currentPage = name;
-  if (name === 'history') loadHistory();
-  if (name === 'admin') { resetAdminLog(); loadStats(); }
+  if (name === 'history' && getToken()) loadHistory();
+  if (name === 'admin' && getToken()) loadStats();
 }
 
 window.showPage = showPage;
+
+// ── Auth-aware UI toggle ───────────────────────────────
+function _applyAuthState(user) {
+  const isGuest = !user;
+  const isAdmin = user?.is_superuser;
+
+  // Guest banner on home page
+  const banner = document.getElementById('guest-banner');
+  if (banner) banner.style.display = isGuest ? '' : 'none';
+
+  // History tab
+  const histLogin = document.getElementById('history-login-required');
+  const histContent = document.getElementById('history-content');
+  if (histLogin) histLogin.style.display = isGuest ? '' : 'none';
+  if (histContent) histContent.style.display = isGuest ? 'none' : '';
+
+  // Admin tab
+  const adminLogin = document.getElementById('admin-login-required');
+  const adminContent = document.getElementById('admin-content');
+  if (adminLogin) adminLogin.style.display = (!user || !isAdmin) ? '' : 'none';
+  if (adminContent) adminContent.style.display = isAdmin ? '' : 'none';
+}
 
 // ── Toast ──────────────────────────────────────────────
 function toast(msg, type = '') {
@@ -73,7 +102,7 @@ async function apiFetch(path, options = {}) {
   }
 }
 
-// ── Home / Stats ───────────────────────────────────────
+// ── Stats ──────────────────────────────────────────────
 async function loadStats() {
   try {
     const data = await apiFetch('/questions/stats/summary');
@@ -159,12 +188,24 @@ window.startQuiz = async function() {
   btn.disabled = true;
   btn.textContent = 'Đang chuẩn bị...';
 
-  try {
-    const data = await apiFetch('/quiz/start', { method: 'POST', body: JSON.stringify(payload) });
-    const totalQ = data.questions.length;
-    const totalMins = data.total_minutes || totalQ;
+  const isLoggedIn = !!getToken();
+  const endpoint = isLoggedIn ? '/quiz/start' : '/quiz/guest-start';
 
-    state.quiz.sessionId = data.session_id;
+  try {
+    const data = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+    const totalMins = data.total_minutes || data.questions.length;
+
+    if (isLoggedIn) {
+      guestState.active = false;
+      guestState.correctMap = {};
+      state.quiz.sessionId = data.session_id;
+    } else {
+      guestState.active = true;
+      guestState.guestToken = data.guest_token;
+      guestState.correctMap = data.correct_map;
+      state.quiz.sessionId = null;
+    }
+
     state.quiz.questions = data.questions;
     state.quiz.currentIndex = 0;
     state.quiz.answers = {};
@@ -178,11 +219,11 @@ window.startQuiz = async function() {
     showPage('quiz');
     renderQuestion();
     startTimer();
-    toast('Bắt đầu làm bài!', 'success');
+    toast(isLoggedIn ? 'Bắt đầu làm bài!' : 'Chế độ khách — kết quả sẽ không được lưu', isLoggedIn ? 'success' : '');
   } catch {
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Bắt đầu làm bài';
+    btn.textContent = '▶ Bắt đầu làm bài';
   }
 };
 
@@ -350,23 +391,39 @@ window.togglePassage = function(questionId) {
 window.selectOption = async function(btnEl, questionId, label) {
   if (state.quiz.answers[questionId]) return;
   const timeTaken = getQuestionElapsedTime();
-  btnEl.classList.add('selected');
-  btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-  try {
-    const res = await apiFetch(`/quiz/${state.quiz.sessionId}/answer`, {
-      method: 'POST',
-      body: JSON.stringify({ question_id: parseInt(questionId), user_answer: label, time_taken: timeTaken }),
-    });
+
+  if (guestState.active) {
+    // Guest mode: score locally using correctMap
+    const shuffledCorrect = String(guestState.correctMap[questionId] || '');
+    const isCorrect = label.toUpperCase() === shuffledCorrect.toUpperCase();
     state.quiz.answers[questionId] = {
       userAnswer: label,
-      isCorrect: res.is_correct,
-      shuffledCorrect: res.correct_answer,
-      explanation: res.explanation,
+      isCorrect,
+      shuffledCorrect,
+      explanation: null,
     };
+    btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
     renderQuestion();
-  } catch {
-    btnEl.classList.remove('selected');
-    btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = false);
+  } else {
+    // Authenticated: send to server
+    btnEl.classList.add('selected');
+    btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+    try {
+      const res = await apiFetch(`/quiz/${state.quiz.sessionId}/answer`, {
+        method: 'POST',
+        body: JSON.stringify({ question_id: parseInt(questionId), user_answer: label, time_taken: timeTaken }),
+      });
+      state.quiz.answers[questionId] = {
+        userAnswer: label,
+        isCorrect: res.is_correct,
+        shuffledCorrect: res.correct_answer,
+        explanation: res.explanation,
+      };
+      renderQuestion();
+    } catch {
+      btnEl.classList.remove('selected');
+      btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = false);
+    }
   }
 };
 
@@ -388,21 +445,50 @@ async function submitQuiz(forced = false) {
     if (answered < total && !confirm(`Còn ${total - answered} câu chưa trả lời. Xem kết quả?`)) return;
   }
   clearInterval(state.quiz.timer);
-  try {
-    const result = await apiFetch(`/quiz/${state.quiz.sessionId}/complete`, { method: 'POST' });
+
+  if (guestState.active) {
+    // Build result locally
+    const answers = state.quiz.questions.map(q => {
+      const ans = state.quiz.answers[q.id];
+      return {
+        question_id: q.id,
+        question_text: q.question_text,
+        user_answer: ans?.userAnswer || null,
+        correct_answer: String(guestState.correctMap[q.id] || ''),
+        is_correct: ans?.isCorrect ?? null,
+        explanation: null,
+      };
+    });
+    const correctCount = answers.filter(a => a.is_correct).length;
+    const total = state.quiz.questions.length;
     showPage('result');
-    renderResult(result);
-  } catch {}
+    renderResult({
+      session_id: null,
+      level: state.quiz.questions[0]?.level || '',
+      question_type: null,
+      score: total > 0 ? Math.round(correctCount / total * 100) : 0,
+      correct_count: correctCount,
+      total_questions: total,
+      time_summary: {},
+      answers,
+    }, true);
+  } else {
+    try {
+      const result = await apiFetch(`/quiz/${state.quiz.sessionId}/complete`, { method: 'POST' });
+      showPage('result');
+      renderResult(result, false);
+    } catch {}
+  }
 }
 
 // ── Result ─────────────────────────────────────────────
-function renderResult(result) {
+function renderResult(result, isGuest = false) {
   const score = Math.round(result.score);
   const grade = score >= 70 ? 'Đạt 🎉' : score >= 50 ? 'Gần đạt 💪' : 'Cần ôn lại 📖';
   document.getElementById('result-score-num').textContent = `${score}%`;
   document.getElementById('result-grade').textContent = grade;
   document.getElementById('result-summary').textContent =
-    `${result.correct_count} / ${result.total_questions} câu đúng · ${result.level} ${result.question_type ? typeLabel(result.question_type) : 'Tất cả loại'}`;
+    `${result.correct_count} / ${result.total_questions} câu đúng · ${result.level}${result.question_type ? ' ' + typeLabel(result.question_type) : ''}`;
 
   document.getElementById('result-answers').innerHTML = result.answers.map((a, i) => `
     <div class="answer-item ${a.is_correct ? 'correct-item' : 'wrong-item'}">
@@ -414,12 +500,17 @@ function renderResult(result) {
       </div>
     </div>
   `).join('');
+
+  const savePrompt = document.getElementById('guest-save-prompt');
+  if (savePrompt) savePrompt.style.display = isGuest ? '' : 'none';
 }
 
 window.retryQuiz = function() { showPage('home'); };
 
 // ── History ────────────────────────────────────────────
 async function loadHistory() {
+  const el = document.getElementById('history-list');
+  if (!el) return;
   try {
     const data = await apiFetch('/quiz/history');
     renderHistory(data);
@@ -457,7 +548,7 @@ window.viewResult = async function(sessionId) {
   try {
     const result = await apiFetch(`/quiz/${sessionId}/result`);
     showPage('result');
-    renderResult(result);
+    renderResult(result, false);
   } catch {}
 };
 
@@ -517,10 +608,23 @@ window.loadSeedData = async function() {
 
 // ── Init ───────────────────────────────────────────────
 const user = await requireAuth();
-if (user) {
-  renderNavbar(user);
-  document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', () => showPage(tab.dataset.page));
-  });
-  showPage('home');
-}
+renderUserIcon(user);
+_applyAuthState(user);
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => showPage(tab.dataset.page));
+});
+
+// Admin link from user dropdown dispatches this event
+document.addEventListener('uib:go-admin', () => showPage('admin'));
+
+// Re-apply auth state after login via modal
+document.addEventListener('auth:login', async (e) => {
+  const loggedInUser = e.detail.user;
+  renderUserIcon(loggedInUser);
+  _applyAuthState(loggedInUser);
+  if (state.currentPage === 'history') loadHistory();
+  if (state.currentPage === 'admin' && loggedInUser.is_superuser) loadStats();
+});
+
+showPage('home');
