@@ -1,32 +1,33 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, computed_field
-
 
 # ---------------------------------------------------------------------------
 # Question schemas
 # ---------------------------------------------------------------------------
 
+
 class QuestionBase(BaseModel):
     level: str
     question_type: str
-    passage: Optional[str] = None
+    passage: str | None = None
     question_text: str
     option_a: str
     option_b: str
     option_c: str
     option_d: str
-    correct_answer: str           # "A" | "B" | "C" | "D"
-    explanation: Optional[str] = None
-    source_url: Optional[str] = None
-    audio_url: Optional[str] = None
-    image_url: Optional[str] = None
+    correct_answer: str  # "A" | "B" | "C" | "D"
+    explanation: str | None = None
+    source_url: str | None = None
+    audio_url: str | None = None
+    image_url: str | None = None
     is_active: bool = True
 
 
 class QuestionCreate(QuestionBase):
     """Schema for creating a new question — identical to QuestionBase."""
+
     pass
 
 
@@ -57,22 +58,23 @@ class QuestionForQuiz(BaseModel):
     id: int
     level: str
     question_type: str
-    passage: Optional[str] = None
+    passage: str | None = None
     question_text: str
-    options: dict[str, str]       # {"A": "...", "B": "...", "C": "...", "D": "..."} — already shuffled
-    audio_url: Optional[str] = None
-    image_url: Optional[str] = None
+    options: dict[str, str]  # {"A": "...", "B": "...", "C": "...", "D": "..."} — already shuffled
+    audio_url: str | None = None
+    image_url: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # Quiz session schemas
 # ---------------------------------------------------------------------------
 
+
 class QuizSessionCreate(BaseModel):
     level: str
-    question_type: Optional[str] = None   # None means all types
+    question_type: str | None = None  # None means all types
     num_questions: int = 10
-    full_exam: bool = False               # True = use real JLPT question counts
+    full_exam: bool = False  # True = use real JLPT question counts
 
 
 class QuizSessionOut(BaseModel):
@@ -80,11 +82,11 @@ class QuizSessionOut(BaseModel):
 
     id: int
     level: str
-    question_type: Optional[str] = None
+    question_type: str | None = None
     num_questions: int
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    score: Optional[float] = None
+    completed_at: datetime | None = None
+    score: float | None = None
     total_questions: int
     correct_count: int
 
@@ -93,26 +95,27 @@ class QuizSessionOut(BaseModel):
 # Quiz answer / result schemas
 # ---------------------------------------------------------------------------
 
+
 class QuizAnswerSubmit(BaseModel):
     question_id: int
-    user_answer: str              # "A" | "B" | "C" | "D"
-    time_taken: Optional[float] = None
+    user_answer: str  # "A" | "B" | "C" | "D"
+    time_taken: float | None = None
 
 
 class QuizResultItem(BaseModel):
     question_id: int
     question_text: str
-    user_answer: Optional[str]
-    correct_answer: str           # shuffled-correct label (what the user sees)
-    is_correct: Optional[bool]
-    explanation: Optional[str] = None
+    user_answer: str | None
+    correct_answer: str  # shuffled-correct label (what the user sees)
+    is_correct: bool | None
+    explanation: str | None = None
 
 
 class QuizResult(BaseModel):
     session_id: int
     level: str
-    question_type: Optional[str]
-    score: float                  # 0 – 100
+    question_type: str | None
+    score: float  # 0 – 100
     correct_count: int
     total_questions: int
     time_summary: dict[str, Any]
@@ -123,15 +126,45 @@ class QuizResult(BaseModel):
 # Session start response
 # ---------------------------------------------------------------------------
 
+
 class QuizStartResponse(BaseModel):
     session_id: int
     questions: list[QuestionForQuiz]
-    total_minutes: Optional[int] = None   # set when full_exam=True
+    total_minutes: int | None = None  # set when full_exam=True
 
 
 class GuestQuizStartResponse(BaseModel):
     """Response for unauthenticated guest quiz — no DB session, client scores locally."""
-    guest_token: str                       # UUID4, used as sessionStorage key
+
+    guest_token: str  # UUID4, used as sessionStorage key
     questions: list[QuestionForQuiz]
-    total_minutes: Optional[int] = None
-    correct_map: dict[int, str]            # {question_id: shuffled_correct_label}
+    total_minutes: int | None = None
+    correct_map: dict[int, str]  # {question_id: shuffled_correct_label}
+
+
+# ---------------------------------------------------------------------------
+# Exam set schemas
+# ---------------------------------------------------------------------------
+
+
+class ExamSetOut(BaseModel):
+    id: int
+    name: str
+    year: int
+    session: str | None = None
+    level: str
+    description: str | None = None
+    question_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExamQuizCreate(BaseModel):
+    exam_set_id: int
+
+
+class ExamQuizStartResponse(BaseModel):
+    session_id: int
+    exam_set_id: int
+    questions: list[QuestionForQuiz]
+    total_minutes: int | None = None

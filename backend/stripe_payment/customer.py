@@ -1,7 +1,13 @@
 import stripe
+
 from .client import get_stripe_client
+from .exceptions import (
+    CardDeclinedError,
+    CustomerNotFoundError,
+    InvalidCardError,
+    StripePaymentError,
+)
 from .models import CardDetails, CustomerData, CustomerResult
-from .exceptions import CardDeclinedError, InvalidCardError, CustomerNotFoundError, StripePaymentError
 
 
 def create_customer(data: CustomerData) -> CustomerResult:
@@ -14,13 +20,21 @@ def create_customer(data: CustomerData) -> CustomerResult:
     if data.address:
         a = data.address
         payload["address"] = {
-            "line1": a.line1, "line2": a.line2, "city": a.city,
-            "state": a.state, "postal_code": a.postal_code, "country": a.country,
+            "line1": a.line1,
+            "line2": a.line2,
+            "city": a.city,
+            "state": a.state,
+            "postal_code": a.postal_code,
+            "country": a.country,
         }
     try:
         c = client.Customer.create(**payload)
-        return CustomerResult(customer_id=c.id, email=c.email, name=c.name,
-                              metadata=c.metadata.to_dict() if c.metadata else {})
+        return CustomerResult(
+            customer_id=c.id,
+            email=c.email,
+            name=c.name,
+            metadata=c.metadata.to_dict() if c.metadata else {},
+        )
     except stripe.error.StripeError as e:
         raise StripePaymentError(str(e), code="stripe_error", stripe_error=e) from e
 
@@ -30,22 +44,31 @@ def attach_payment_method(customer_id: str, card: CardDetails) -> CustomerResult
     try:
         pm = client.PaymentMethod.create(
             type="card",
-            card={"number": card.number, "exp_month": card.exp_month,
-                  "exp_year": card.exp_year, "cvc": card.cvc},
+            card={
+                "number": card.number,
+                "exp_month": card.exp_month,
+                "exp_year": card.exp_year,
+                "cvc": card.cvc,
+            },
             billing_details={"name": card.name} if card.name else {},
         )
         client.PaymentMethod.attach(pm.id, customer=customer_id)
         client.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id})
         c = client.Customer.retrieve(customer_id)
-        return CustomerResult(customer_id=c.id, email=c.email, name=c.name,
-                              payment_method_id=pm.id,
-                              metadata=c.metadata.to_dict() if c.metadata else {})
+        return CustomerResult(
+            customer_id=c.id,
+            email=c.email,
+            name=c.name,
+            payment_method_id=pm.id,
+            metadata=c.metadata.to_dict() if c.metadata else {},
+        )
     except stripe.error.CardError as e:
         _raise_card_error(e)
     except stripe.error.InvalidRequestError as e:
         if "No such customer" in str(e):
-            raise CustomerNotFoundError(f"Customer '{customer_id}' not found.",
-                                        code="customer_not_found", stripe_error=e) from e
+            raise CustomerNotFoundError(
+                f"Customer '{customer_id}' not found.", code="customer_not_found", stripe_error=e
+            ) from e
         raise StripePaymentError(str(e), code="invalid_request", stripe_error=e) from e
     except stripe.error.StripeError as e:
         raise StripePaymentError(str(e), code="stripe_error", stripe_error=e) from e
@@ -56,17 +79,23 @@ def retrieve_customer(customer_id: str) -> CustomerResult:
     try:
         c = client.Customer.retrieve(customer_id)
         if c.get("deleted"):
-            raise CustomerNotFoundError(f"Customer '{customer_id}' has been deleted.",
-                                        code="customer_deleted")
+            raise CustomerNotFoundError(
+                f"Customer '{customer_id}' has been deleted.", code="customer_deleted"
+            )
         pm_id = None
         if c.invoice_settings:
             pm_id = c.invoice_settings.get("default_payment_method")
-        return CustomerResult(customer_id=c.id, email=c.email, name=c.name,
-                              payment_method_id=pm_id,
-                              metadata=c.metadata.to_dict() if c.metadata else {})
+        return CustomerResult(
+            customer_id=c.id,
+            email=c.email,
+            name=c.name,
+            payment_method_id=pm_id,
+            metadata=c.metadata.to_dict() if c.metadata else {},
+        )
     except stripe.error.InvalidRequestError as e:
-        raise CustomerNotFoundError(f"Customer '{customer_id}' not found.",
-                                    code="customer_not_found", stripe_error=e) from e
+        raise CustomerNotFoundError(
+            f"Customer '{customer_id}' not found.", code="customer_not_found", stripe_error=e
+        ) from e
     except stripe.error.StripeError as e:
         raise StripePaymentError(str(e), code="stripe_error", stripe_error=e) from e
 
@@ -77,8 +106,9 @@ def delete_customer(customer_id: str) -> bool:
         result = client.Customer.delete(customer_id)
         return result.get("deleted", False)
     except stripe.error.InvalidRequestError as e:
-        raise CustomerNotFoundError(f"Customer '{customer_id}' not found.",
-                                    code="customer_not_found", stripe_error=e) from e
+        raise CustomerNotFoundError(
+            f"Customer '{customer_id}' not found.", code="customer_not_found", stripe_error=e
+        ) from e
     except stripe.error.StripeError as e:
         raise StripePaymentError(str(e), code="stripe_error", stripe_error=e) from e
 
@@ -88,7 +118,14 @@ def _raise_card_error(e: stripe.error.CardError) -> None:
     msg = e.user_message or str(e)
     if code == "card_declined":
         raise CardDeclinedError(msg, code=code, stripe_error=e) from e
-    if code in ("invalid_number", "invalid_expiry_month", "invalid_expiry_year",
-                "invalid_cvc", "expired_card", "incorrect_number", "incorrect_cvc"):
+    if code in (
+        "invalid_number",
+        "invalid_expiry_month",
+        "invalid_expiry_year",
+        "invalid_cvc",
+        "expired_card",
+        "incorrect_number",
+        "incorrect_cvc",
+    ):
         raise InvalidCardError(msg, code=code, stripe_error=e) from e
     raise StripePaymentError(msg, code=code, stripe_error=e) from e

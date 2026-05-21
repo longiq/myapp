@@ -1,20 +1,19 @@
-from typing import Optional
 from pydantic import BaseModel
 
 
 class FrontendPaymentIntentIn(BaseModel):
     amount: int
     currency: str = "usd"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class AddressIn(BaseModel):
     line1: str
     city: str
     country: str
-    line2: Optional[str] = None
-    postal_code: Optional[str] = None
-    state: Optional[str] = None
+    line2: str | None = None
+    postal_code: str | None = None
+    state: str | None = None
 
 
 class CardDetailsIn(BaseModel):
@@ -22,29 +21,29 @@ class CardDetailsIn(BaseModel):
     exp_month: int
     exp_year: int
     cvc: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class CustomerCreateIn(BaseModel):
     email: str
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[AddressIn] = None
+    name: str | None = None
+    phone: str | None = None
+    address: AddressIn | None = None
     metadata: dict = {}
 
 
 class PaymentIntentCreateIn(BaseModel):
     amount: int
     currency: str
-    customer_id: Optional[str] = None
-    payment_method_id: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Optional[dict] = None
+    customer_id: str | None = None
+    payment_method_id: str | None = None
+    description: str | None = None
+    metadata: dict | None = None
     confirm: bool = False
 
 
 class PaymentConfirmIn(BaseModel):
-    payment_method_id: Optional[str] = None
+    payment_method_id: str | None = None
 
 
 class ChargeCustomerIn(BaseModel):
@@ -52,21 +51,21 @@ class ChargeCustomerIn(BaseModel):
     payment_method_id: str
     amount: int
     currency: str
-    description: Optional[str] = None
-    metadata: Optional[dict] = None
+    description: str | None = None
+    metadata: dict | None = None
 
 
 class RefundIn(BaseModel):
     payment_intent_id: str
-    amount: Optional[int] = None
-    reason: Optional[str] = None
+    amount: int | None = None
+    reason: str | None = None
 
 
 class CustomerOut(BaseModel):
     customer_id: str
     email: str
-    name: Optional[str] = None
-    payment_method_id: Optional[str] = None
+    name: str | None = None
+    payment_method_id: str | None = None
     metadata: dict = {}
 
 
@@ -76,9 +75,9 @@ class PaymentOut(BaseModel):
     amount: int
     currency: str
     amount_display: str
-    customer_id: Optional[str] = None
-    payment_method_id: Optional[str] = None
-    client_secret: Optional[str] = None
+    customer_id: str | None = None
+    payment_method_id: str | None = None
+    client_secret: str | None = None
     metadata: dict = {}
 
 

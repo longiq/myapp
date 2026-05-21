@@ -85,7 +85,7 @@ function _showDropdown(user) {
       <span>${user.email || ''}</span>
     </div>
     <a href="/jlpt.html" class="uib-dd-item">&#x1F3CC; Học JLPT</a>
-    <a href="/dashboard.html" class="uib-dd-item">&#x1F4CA; Dashboard</a>
+    ${user.is_superuser ? '<a href="/dashboard.html" class="uib-dd-item">&#x1F4CA; Dashboard</a>' : ''}
     ${user.is_superuser ? '<a href="/jlpt.html" class="uib-dd-item" id="uib-admin-link">&#x2699;&#xFE0F; Quản lý</a>' : ''}
     <button class="uib-dd-item uib-dd-logout" id="uib-logout">&#x1F6AA; Đăng xuất</button>
   `;

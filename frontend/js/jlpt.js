@@ -45,7 +45,8 @@ function showPage(name) {
   document.querySelector(`.nav-tab[data-page="${name}"]`)?.classList.add('active');
   state.currentPage = name;
   if (name === 'history' && getToken()) loadHistory();
-  if (name === 'admin' && getToken()) loadStats();
+  if (name === 'admin' && getToken()) { loadStats(); loadUsers(); loadAdminExamSets(); }
+  if (name === 'exam' && getToken()) loadExamSets();
 }
 
 window.showPage = showPage;
@@ -54,6 +55,7 @@ window.showPage = showPage;
 function _applyAuthState(user) {
   const isGuest = !user;
   const isAdmin = user?.is_superuser;
+  const hasExamAccess = user?.has_jlpt_exam_access || isAdmin;
 
   // Guest banner on home page
   const banner = document.getElementById('guest-banner');
@@ -70,6 +72,14 @@ function _applyAuthState(user) {
   const adminContent = document.getElementById('admin-content');
   if (adminLogin) adminLogin.style.display = (!user || !isAdmin) ? '' : 'none';
   if (adminContent) adminContent.style.display = isAdmin ? '' : 'none';
+
+  // Exam tab — visible only to users with exam access or superusers
+  const examTab = document.querySelector('.nav-tab[data-page="exam"]');
+  if (examTab) examTab.style.display = hasExamAccess ? '' : 'none';
+  const examNoAccess = document.getElementById('exam-no-access');
+  const examContent = document.getElementById('exam-content');
+  if (examNoAccess) examNoAccess.style.display = hasExamAccess ? 'none' : '';
+  if (examContent) examContent.style.display = hasExamAccess ? '' : 'none';
 }
 
 // ── Toast ──────────────────────────────────────────────
@@ -552,6 +562,240 @@ window.viewResult = async function(sessionId) {
   } catch {}
 };
 
+// ── Exam Sets ──────────────────────────────────────────
+
+async function loadExamSets() {
+  const wrap = document.getElementById('exam-sets-list');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="empty-state"><div class="icon">📚</div><p>Đang tải...</p></div>';
+  try {
+    const sets = await apiFetch('/quiz/exam-sets');
+    if (!sets.length) {
+      wrap.innerHTML = '<div class="empty-state"><div class="icon">📚</div><p>Chưa có bộ đề nào.</p></div>';
+      return;
+    }
+    wrap.innerHTML = sets.map(s => `
+      <div class="history-item" style="cursor:default;">
+        <div>
+          <strong>${escHtml(s.name)}</strong>
+          <div style="font-size:0.82rem;color:var(--text-muted);">
+            <span class="badge badge-${escHtml(s.level)}">${escHtml(s.level)}</span>
+            ${s.year} · ${s.session === 'july' ? 'Tháng 7' : s.session === 'december' ? 'Tháng 12' : ''}
+            · ${s.question_count} câu
+          </div>
+          ${s.description ? `<div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px;">${escHtml(s.description)}</div>` : ''}
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="startExamQuiz(${s.id})">▶ Thi thử</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty-state"><p>Lỗi: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+window.loadExamSets = loadExamSets;
+
+window.startExamQuiz = async function(examSetId) {
+  try {
+    const res = await apiFetch('/quiz/exam-start', {
+      method: 'POST',
+      body: JSON.stringify({ exam_set_id: examSetId }),
+    });
+    state.quiz.sessionId = res.session_id;
+    state.quiz.questions = res.questions;
+    state.quiz.currentIndex = 0;
+    state.quiz.answers = {};
+    state.quiz.timers = {};
+    state.quiz.audioLoading = {};
+    state.quiz.audioLoaded = {};
+    state.quiz.passageVisible = {};
+    guestState.active = false;
+    if (res.total_minutes) {
+      state.quiz.timeLeft = res.total_minutes * 60;
+      state.quiz.totalTime = res.total_minutes * 60;
+    } else {
+      state.quiz.timeLeft = 0;
+    }
+    showPage('quiz');
+    renderQuestion();
+    if (res.total_minutes) startTimer();
+    toast('Bắt đầu thi thử bộ đề!', 'success');
+  } catch (e) {
+    toast(e.message || 'Không thể bắt đầu bài thi', 'error');
+  }
+};
+
+// ── Admin / User Management ────────────────────────────
+
+async function loadUsers() {
+  const wrap = document.getElementById('users-table-wrap');
+  if (!wrap) return;
+  try {
+    const users = await fetch('/api/v1/admin/users', {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    }).then(r => r.json());
+    if (!Array.isArray(users) || !users.length) {
+      wrap.innerHTML = '<div class="empty-state"><p>Chưa có người dùng.</p></div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:8px;text-align:left;border-bottom:2px solid var(--border);">Tài khoản</th>
+            <th style="padding:8px;text-align:left;border-bottom:2px solid var(--border);">Email</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Admin</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Quyền đề thi</th>
+            <th style="padding:8px;text-align:center;border-bottom:2px solid var(--border);">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${users.map(u => `
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid var(--border);">${escHtml(u.username)}</td>
+              <td style="padding:8px;border-bottom:1px solid var(--border);">${escHtml(u.email)}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid var(--border);">${u.is_superuser ? '✅' : ''}</td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid var(--border);">
+                <span id="exam-access-badge-${u.id}">${u.has_jlpt_exam_access ? '✅ Có' : '—'}</span>
+              </td>
+              <td style="padding:8px;text-align:center;border-bottom:1px solid var(--border);">
+                ${!u.is_superuser ? `
+                  <button class="btn btn-sm ${u.has_jlpt_exam_access ? 'btn-outline' : 'btn-success'}"
+                    onclick="toggleJlptAccess(${u.id}, ${!u.has_jlpt_exam_access})">
+                    ${u.has_jlpt_exam_access ? 'Thu hồi' : 'Cấp quyền'}
+                  </button>
+                ` : '<span style="color:var(--text-muted);font-size:0.8rem;">—</span>'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch {
+    wrap.innerHTML = '<div class="empty-state"><p>Lỗi tải danh sách.</p></div>';
+  }
+}
+
+window.loadUsers = loadUsers;
+
+window.toggleJlptAccess = async function(userId, grant) {
+  try {
+    await fetch(`/api/v1/admin/users/${userId}/jlpt-access`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ grant }),
+    }).then(r => { if (!r.ok) throw new Error('Lỗi'); return r.json(); });
+    toast(grant ? 'Đã cấp quyền đề thi.' : 'Đã thu hồi quyền đề thi.', 'success');
+    loadUsers();
+  } catch {
+    toast('Không thể thay đổi quyền.', 'error');
+  }
+};
+
+// ── Admin / Exam Set CRUD ──────────────────────────────
+
+async function loadAdminExamSets() {
+  const wrap = document.getElementById('admin-exam-sets-list');
+  if (!wrap) return;
+  try {
+    const sets = await fetch('/api/v1/admin/exam-sets', {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    }).then(r => r.json());
+    if (!Array.isArray(sets) || !sets.length) {
+      wrap.innerHTML = '<div class="empty-state"><p>Chưa có bộ đề nào.</p></div>';
+      return;
+    }
+    wrap.innerHTML = sets.map(s => `
+      <div class="history-item" style="cursor:default;">
+        <div>
+          <strong>${escHtml(s.name)}</strong>
+          <div style="font-size:0.82rem;color:var(--text-muted);">
+            <span class="badge badge-${escHtml(s.level)}">${escHtml(s.level)}</span>
+            ${s.year} · ${s.question_count} câu · ${s.is_active ? '✅ Hiển thị' : '🚫 Ẩn'}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;position:relative;overflow:hidden;">
+            📥 Import JSON
+            <input type="file" accept=".json" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;"
+              onchange="importExamJson(${s.id}, this)">
+          </label>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;position:relative;overflow:hidden;">
+            🗜 Upload Media
+            <input type="file" accept=".zip" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;"
+              onchange="uploadExamMedia(${s.id}, this)">
+          </label>
+        </div>
+      </div>
+    `).join('');
+  } catch {
+    wrap.innerHTML = '<div class="empty-state"><p>Lỗi tải danh sách.</p></div>';
+  }
+}
+
+window.loadAdminExamSets = loadAdminExamSets;
+
+window.createExamSet = async function() {
+  const name = document.getElementById('es-name').value.trim();
+  const year = parseInt(document.getElementById('es-year').value);
+  const level = document.getElementById('es-level').value;
+  const session = document.getElementById('es-session').value || null;
+  const description = document.getElementById('es-desc').value.trim() || null;
+  if (!name || !year || !level) { toast('Vui lòng điền đầy đủ tên, năm và cấp độ.', 'error'); return; }
+  try {
+    await fetch('/api/v1/admin/exam-sets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+      body: JSON.stringify({ name, year, level, session, description }),
+    }).then(r => { if (!r.ok) throw new Error('Lỗi'); return r.json(); });
+    toast('Đã tạo bộ đề!', 'success');
+    ['es-name','es-year','es-desc'].forEach(id => document.getElementById(id).value = '');
+    loadAdminExamSets();
+  } catch {
+    toast('Không thể tạo bộ đề.', 'error');
+  }
+};
+
+window.importExamJson = async function(examSetId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`/api/v1/admin/exam-sets/${examSetId}/import`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: formData,
+    }).then(r => { if (!r.ok) throw new Error('Lỗi'); return r.json(); });
+    toast(`Import thành công: +${res.added} câu, bỏ qua ${res.skipped}.`, 'success');
+    loadAdminExamSets();
+  } catch {
+    toast('Không thể import JSON.', 'error');
+  }
+  input.value = '';
+};
+
+window.uploadExamMedia = async function(examSetId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`/api/v1/admin/exam-sets/${examSetId}/upload-media`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: formData,
+    }).then(r => { if (!r.ok) throw new Error('Lỗi'); return r.json(); });
+    toast(`Upload thành công: ${res.extracted} file.`, 'success');
+  } catch {
+    toast('Không thể upload media.', 'error');
+  }
+  input.value = '';
+};
+
 // ── Admin / Crawler ────────────────────────────────────
 function resetAdminLog() {
   const log = document.getElementById('crawl-log');
@@ -624,7 +868,10 @@ document.addEventListener('auth:login', async (e) => {
   renderUserIcon(loggedInUser);
   _applyAuthState(loggedInUser);
   if (state.currentPage === 'history') loadHistory();
-  if (state.currentPage === 'admin' && loggedInUser.is_superuser) loadStats();
+  if (state.currentPage === 'admin' && loggedInUser.is_superuser) {
+    loadStats(); loadUsers(); loadAdminExamSets();
+  }
+  if (state.currentPage === 'exam') loadExamSets();
 });
 
 showPage('home');

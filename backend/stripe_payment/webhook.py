@@ -1,5 +1,7 @@
 import os
+
 import stripe
+
 from .client import get_stripe_client
 from .exceptions import StripePaymentError
 
@@ -12,8 +14,9 @@ def construct_webhook_event(payload: bytes, sig_header: str, secret: str = None)
     try:
         return stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except stripe.error.SignatureVerificationError as e:
-        raise StripePaymentError("Invalid webhook signature.",
-                                 code="invalid_signature", stripe_error=e) from e
+        raise StripePaymentError(
+            "Invalid webhook signature.", code="invalid_signature", stripe_error=e
+        ) from e
     except ValueError:
         raise StripePaymentError("Invalid webhook payload.", code="invalid_payload")
 
@@ -21,8 +24,11 @@ def construct_webhook_event(payload: bytes, sig_header: str, secret: str = None)
 def handle_payment_intent_events(event: stripe.Event) -> dict:
     intent = event.data.object
     result = {
-        "event_type": event.type, "payment_intent_id": intent.id,
-        "status": intent.status, "amount": intent.amount, "currency": intent.currency,
+        "event_type": event.type,
+        "payment_intent_id": intent.id,
+        "status": intent.status,
+        "amount": intent.amount,
+        "currency": intent.currency,
         "customer_id": intent.customer,
         "metadata": intent.metadata.to_dict() if intent.metadata else {},
     }

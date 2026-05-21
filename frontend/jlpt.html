@@ -24,6 +24,7 @@
 <div class="nav-tabs">
   <button class="nav-tab active" data-page="home">🏠 Trang chủ</button>
   <button class="nav-tab" data-page="quiz">✏️ Làm bài</button>
+  <button class="nav-tab" data-page="exam" style="display:none;">📚 Đề thi</button>
   <button class="nav-tab" data-page="result">📊 Kết quả</button>
   <button class="nav-tab" data-page="history">📋 Lịch sử</button>
   <button class="nav-tab" data-page="admin">⚙️ Quản lý</button>
@@ -239,6 +240,33 @@
     </div>
   </div>
 
+  <!-- ════ TRANG ĐỀ THI ════ -->
+  <div id="page-exam" class="page">
+    <!-- Shown to users without exam access -->
+    <div id="exam-no-access" class="card login-required-card">
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <p>Bạn chưa được cấp quyền truy cập bộ đề thi.</p>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">Liên hệ quản trị viên để được cấp quyền.</p>
+      </div>
+    </div>
+    <!-- Shown to users with exam access -->
+    <div id="exam-content" style="display:none;">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📚 Bộ đề thi JLPT</span>
+          <button class="btn btn-outline btn-sm" onclick="loadExamSets()">Làm mới</button>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+          Đề thi JLPT từ các kỳ thi chính thức. Chọn bộ đề để bắt đầu thi thử.
+        </p>
+        <div id="exam-sets-list">
+          <div class="empty-state"><div class="icon">📚</div><p>Đang tải...</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ════ TRANG QUẢN LÝ ════ -->
   <div id="page-admin" class="page">
     <!-- Shown to non-superusers -->
@@ -251,9 +279,54 @@
     </div>
     <!-- Shown to superusers -->
     <div id="admin-content" style="display:none;">
+
+      <!-- User management -->
       <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>📊 Thống kê câu hỏi</span>
+          <span>👥 Quản lý người dùng</span>
+          <button class="btn btn-outline btn-sm" onclick="loadUsers()">Làm mới</button>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+          Cấp / thu hồi quyền truy cập bộ đề thi JLPT cho từng tài khoản.
+        </p>
+        <div id="users-table-wrap" style="overflow-x:auto;">
+          <div class="empty-state"><div class="icon">👥</div><p>Đang tải...</p></div>
+        </div>
+      </div>
+
+      <!-- Exam set management -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📚 Quản lý bộ đề thi</span>
+          <button class="btn btn-outline btn-sm" onclick="loadAdminExamSets()">Làm mới</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input id="es-name" class="form-select" placeholder="Tên bộ đề (VD: JLPT N3 2023 July)" style="padding:8px;">
+            <input id="es-year" class="form-select" type="number" placeholder="Năm (VD: 2023)" style="padding:8px;">
+            <select id="es-level" class="form-select">
+              <option value="">-- Cấp độ --</option>
+              <option value="N5">N5</option><option value="N4">N4</option><option value="N3">N3</option>
+              <option value="N2">N2</option><option value="N1">N1</option>
+            </select>
+            <select id="es-session" class="form-select">
+              <option value="">-- Kỳ thi --</option>
+              <option value="july">Tháng 7</option>
+              <option value="december">Tháng 12</option>
+            </select>
+          </div>
+          <input id="es-desc" class="form-select" placeholder="Mô tả (tuỳ chọn)" style="padding:8px;width:100%;margin-bottom:8px;">
+          <button class="btn btn-success btn-sm" onclick="createExamSet()">+ Tạo bộ đề</button>
+        </div>
+        <div id="admin-exam-sets-list">
+          <div class="empty-state"><div class="icon">📚</div><p>Đang tải...</p></div>
+        </div>
+      </div>
+
+      <!-- Question stats -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📊 Thống kê câu hỏi (luyện tập)</span>
           <button class="btn btn-outline btn-sm" onclick="loadStats()">Làm mới</button>
         </div>
         <div id="stats-grid" class="stats-grid">

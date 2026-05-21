@@ -1,0 +1,19 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+    "E501",   # line too long — formatter handles this
+    "E711",   # == None in SQLAlchemy filter() is intentional column expression syntax
+    "E712",   # == True/False in SQLAlchemy filter() is intentional column expression syntax
+    "UP007",  # X | Y union syntax — keep Optional for clarity
+    "UP042",  # StrEnum — keep str+Enum for Python 3.10 compat
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E402"]
+"*/__init__.py" = ["F401"]   # re-exports in __init__ files are intentional
+
+[format]
+quote-style = "double"

@@ -1,12 +1,33 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
-    Integer, String, Text,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+
+class JlptExamSet(Base):
+    __tablename__ = "jlpt_exam_sets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    name = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
+    session = Column(String, nullable=True)  # "july" | "december"
+    level = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, server_default="1")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    questions = relationship("Question", back_populates="exam_set")
 
 
 class Question(Base):
@@ -28,8 +49,10 @@ class Question(Base):
     image_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, server_default="1")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    exam_set_id = Column(Integer, ForeignKey("jlpt_exam_sets.id"), nullable=True, index=True)
 
     quiz_answers = relationship("JlptQuizAnswer", back_populates="question")
+    exam_set = relationship("JlptExamSet", back_populates="questions")
 
 
 class JlptQuizSession(Base):

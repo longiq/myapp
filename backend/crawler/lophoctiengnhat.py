@@ -8,7 +8,6 @@ rather than raising when the site is unreachable or its markup has changed.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from bs4 import BeautifulSoup, Tag
 
@@ -21,8 +20,8 @@ SITE_BASE = "https://lophoctiengnhat.com"
 # URL path suffixes per question type
 QUESTION_TYPE_PATHS: dict[str, list[str]] = {
     "vocabulary": ["tu-vung", "bai-tap-tu-vung"],
-    "grammar":    ["ngu-phap", "bai-tap-ngu-phap"],
-    "reading":    ["doc-hieu", "bai-tap-doc-hieu"],
+    "grammar": ["ngu-phap", "bai-tap-ngu-phap"],
+    "reading": ["doc-hieu", "bai-tap-doc-hieu"],
 }
 
 # CSS selectors tried in order for question containers
@@ -57,7 +56,7 @@ CORRECT_CLASS_FRAGMENTS = ["correct", "right", "true", "active", "dung", "correc
 ANSWER_LABELS = ("A", "B", "C", "D")
 
 
-def _clean(text: Optional[str]) -> str:
+def _clean(text: str | None) -> str:
     if not text:
         return ""
     return " ".join(text.split())
@@ -82,7 +81,9 @@ def _extract_choices(container: Tag) -> tuple[list[str], str]:
     return choices, correct_answer
 
 
-def _parse_question_block(block: Tag, source_url: str, level: str, question_type: str) -> Optional[dict]:
+def _parse_question_block(
+    block: Tag, source_url: str, level: str, question_type: str
+) -> dict | None:
     question_text = ""
     for sel in [".question-text", ".cau-hoi", "p", "h3", "h4", "strong"]:
         candidate = block.select_one(sel)
@@ -142,7 +143,9 @@ def _parse_page(soup: BeautifulSoup, source_url: str, level: str, question_type:
             if result:
                 questions.append(result)
         if questions:
-            print(f"[lophoctiengnhat] parsed {len(questions)} question(s) with selector '{selector}'")
+            print(
+                f"[lophoctiengnhat] parsed {len(questions)} question(s) with selector '{selector}'"
+            )
             break
     return questions
 
@@ -158,7 +161,11 @@ class LophoctiengnhatCrawler(BaseCrawler):
         suffixes = QUESTION_TYPE_PATHS.get(question_type, [""])
         urls = []
         for suffix in suffixes:
-            base = f"{self.base_url}/{level_path}/{suffix}" if suffix else f"{self.base_url}/{level_path}"
+            base = (
+                f"{self.base_url}/{level_path}/{suffix}"
+                if suffix
+                else f"{self.base_url}/{level_path}"
+            )
             urls.append(f"{base}?page={page}" if page > 1 else base)
         return urls
 
@@ -166,7 +173,9 @@ class LophoctiengnhatCrawler(BaseCrawler):
         all_questions: list[dict] = []
         seen_texts: set[str] = set()
 
-        print(f"[lophoctiengnhat] crawl start — level={level}, type={question_type}, max_pages={max_pages}")
+        print(
+            f"[lophoctiengnhat] crawl start — level={level}, type={question_type}, max_pages={max_pages}"
+        )
 
         for page in range(1, max_pages + 1):
             page_questions: list[dict] = []
