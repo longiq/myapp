@@ -14,7 +14,7 @@
 <!-- JLPT Header -->
 <div class="header">
   <div>
-    <div class="header-title" style="font-size:1.2rem;font-weight:800;">🎌 JLPT Ngân hàng câu hỏi</div>
+    <div class="header-title" style="font-size:1.2rem;font-weight:800;">🎌 Luyện thi JLPT</div>
     <div style="font-size:0.75rem;opacity:0.8;">Hệ thống luyện thi năng lực tiếng Nhật</div>
   </div>
   <div class="header-spacer"></div>
@@ -23,7 +23,6 @@
 <!-- Nav Tabs -->
 <div class="nav-tabs">
   <button class="nav-tab active" data-page="home">🏠 Trang chủ</button>
-  <button class="nav-tab" data-page="quiz">✏️ Làm bài</button>
   <button class="nav-tab" data-page="exam" style="display:none;">📚 Đề thi</button>
   <button class="nav-tab" data-page="result">📊 Kết quả</button>
   <button class="nav-tab" data-page="history">📋 Lịch sử</button>
@@ -103,9 +102,10 @@
         </p>
       </div>
 
-      <button id="btn-start" class="btn btn-primary btn-lg" onclick="startQuiz()">
-        ▶ Bắt đầu làm bài
-      </button>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+        <button id="btn-start" class="btn btn-primary btn-lg" onclick="startQuiz()">▶ Bắt đầu làm bài</button>
+        <button id="btn-resume" class="btn btn-outline btn-lg" onclick="resumeQuiz()" style="display:none;">⏯ Tiếp tục làm bài</button>
+      </div>
     </div>
 
     <div class="card">
@@ -172,7 +172,10 @@
           <div id="quiz-progress-bar" class="progress-bar" style="width:10%"></div>
         </div>
       </div>
-      <div id="quiz-timer" class="timer">10:00</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="quiz-timer" class="timer">10:00</div>
+        <button onclick="pauseQuiz()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.8rem;cursor:pointer;color:var(--text-muted);white-space:nowrap;">⏸ Tạm dừng</button>
+      </div>
     </div>
 
     <div class="card">

@@ -26,6 +26,7 @@ const state = {
     audioLoading: {},
     audioLoaded: {},
     passageVisible: {},
+    paused: false,
   },
   stats: null,
 };
@@ -39,14 +40,38 @@ const guestState = {
 
 // ── Navigation ─────────────────────────────────────────
 function showPage(name) {
+  // Auto-pause timer when navigating away from an active quiz
+  if (state.currentPage === 'quiz' && name !== 'quiz' && state.quiz.questions.length > 0 && !state.quiz.paused) {
+    clearInterval(state.quiz.timer);
+    state.quiz.paused = true;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`page-${name}`)?.classList.add('active');
   document.querySelector(`.nav-tab[data-page="${name}"]`)?.classList.add('active');
   state.currentPage = name;
+  if (name === 'home') _updateHomeButtons();
   if (name === 'history' && getToken()) loadHistory();
   if (name === 'admin' && getToken()) { loadStats(); loadUsers(); loadAdminExamSets(); }
 }
+
+function _updateHomeButtons() {
+  const btnResume = document.getElementById('btn-resume');
+  if (btnResume) btnResume.style.display = (state.quiz.paused && state.quiz.questions.length > 0) ? '' : 'none';
+}
+
+window.pauseQuiz = function() {
+  clearInterval(state.quiz.timer);
+  state.quiz.paused = true;
+  showPage('home');
+};
+
+window.resumeQuiz = function() {
+  state.quiz.paused = false;
+  showPage('quiz');
+  renderQuestion();
+  startTimer();
+};
 
 window.showPage = showPage;
 
@@ -181,6 +206,13 @@ window.setQuizMode = function(mode) {
 
 // ── Start Quiz ─────────────────────────────────────────
 window.startQuiz = async function() {
+  if (state.quiz.paused && state.quiz.questions.length > 0) {
+    if (!confirm('Bạn đang có bài làm chưa hoàn thành. Bắt đầu bài mới sẽ hủy tiến độ hiện tại. Tiếp tục?')) return;
+    clearInterval(state.quiz.timer);
+    state.quiz.paused = false;
+    state.quiz.questions = [];
+    _updateHomeButtons();
+  }
   const isFullExam = state.quizMode === 'full';
   let payload;
 
@@ -458,7 +490,7 @@ async function submitQuiz(forced = false) {
   clearInterval(state.quiz.timer);
 
   if (guestState.active) {
-    // Build result locally
+    // Build result before clearing state
     const answers = state.quiz.questions.map(q => {
       const ans = state.quiz.answers[q.id];
       return {
@@ -472,8 +504,7 @@ async function submitQuiz(forced = false) {
     });
     const correctCount = answers.filter(a => a.is_correct).length;
     const total = state.quiz.questions.length;
-    showPage('result');
-    renderResult({
+    const resultData = {
       session_id: null,
       level: state.quiz.questions[0]?.level || '',
       question_type: null,
@@ -482,10 +513,16 @@ async function submitQuiz(forced = false) {
       total_questions: total,
       time_summary: {},
       answers,
-    }, true);
+    };
+    state.quiz.paused = false;
+    state.quiz.questions = [];
+    showPage('result');
+    renderResult(resultData, true);
   } else {
     try {
       const result = await apiFetch(`/quiz/${state.quiz.sessionId}/complete`, { method: 'POST' });
+      state.quiz.paused = false;
+      state.quiz.questions = [];
       showPage('result');
       renderResult(result, false);
     } catch {}
