@@ -95,7 +95,7 @@
       <span class="badge done-badge">✓ Hoạt động</span>
     </div>
 
-    <div class="module-card" onclick="location.href='/jlpt.html'">
+    <div class="module-card" onclick="location.href='/'">
       <span class="icon">🎌</span>
       <h2>JLPT Quiz</h2>
       <p>Luyện thi năng lực tiếng Nhật N1–N5 với đề thi từ vựng, ngữ pháp, đọc hiểu và nghe hiểu.</p>
@@ -134,7 +134,7 @@
   import { requireAuthStrict, renderNavbar } from '/js/app.js';
   const user = await requireAuthStrict();
   if (!user.is_superuser) {
-    window.location.href = '/jlpt.html';
+    window.location.href = '/';
   } else {
     renderNavbar(user);
     document.getElementById('greeting-text').textContent = `Xin chào, ${user.username}! 👋`;

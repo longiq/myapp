@@ -49,8 +49,8 @@ myapp/
 │   │   └── exceptions.py        # CardDeclinedError, InvalidCardError, etc.
 │   └── crawler/                 # Seed data for JLPT questions (N1-N5)
 └── frontend/
-    ├── jlpt.html                # Main landing page (no auth required)
-    ├── index.html               # Standalone login/register page
+    ├── index.html               # Main landing page — JLPT app (no auth required, served at /)
+    ├── login.html               # Standalone login/register page
     ├── dashboard.html           # Admin hub (superuser only — redirects others)
     ├── payment.html             # Stripe payment (auth required)
     ├── css/jlpt.css
@@ -100,8 +100,8 @@ On every startup, `_startup_db_fixes()` reads `ADMIN_USERNAME` env var and grant
 to that account if not already set. Set this in `.env` (not hardcoded in source).
 
 ### Dashboard protection
-`dashboard.html` requires `is_superuser=True`. Non-admin users are redirected to `/jlpt.html`.
-Guests are redirected to `/index.html`.
+`dashboard.html` requires `is_superuser=True`. Non-admin users are redirected to `/` (JLPT page).
+Guests are redirected to `/login.html`.
 
 ### Admin API (`/api/v1/admin/*`) — superuser only
 ```
@@ -159,6 +159,12 @@ def list_items(): ...
 from app.yourmodule.router import router as yourmodule_router
 app.include_router(yourmodule_router, prefix="/api/v1/yourmodule")
 ```
+
+## Frontend conventions
+
+- **Confirm dialogs**: Dùng `showConfirm(message, confirmText, cancelText)` trong `jlpt.js` — trả về `Promise<boolean>`. **Không dùng** `window.confirm()` hoặc `window.alert()`.
+- **Login page**: `/login.html` (standalone). Trang chủ là `/` → `index.html` (JLPT app).
+- **requireAuthStrict()**: redirect về `/login.html?next=<path>` nếu chưa đăng nhập.
 
 ## Auth flow
 
