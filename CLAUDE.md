@@ -116,6 +116,184 @@ app.include_router(yourmodule_router, prefix="/api/v1/yourmodule")
 
 ---
 
+## JLPT Module — Chi tiết
+
+### Database models (`backend/app/jlpt/models.py`)
+
+**`Question`** — bảng `jlpt_questions`
+```
+id, level (N1–N5), question_type (vocabulary|grammar|reading|listening)
+passage (Text, nullable)    — đoạn văn đọc hiểu hoặc hội thoại nghe
+question_text               — câu hỏi (tiếng Nhật)
+option_a, option_b, option_c, option_d
+correct_answer              — "A" | "B" | "C" | "D" (stored as-is, shuffled at quiz time)
+explanation (Text)          — giải thích đáp án
+audio_url                   — path /audio/jlpt_<hash>.mp3 (tự động điền sau khi TTS)
+image_url                   — hình ảnh câu hỏi (optional)
+is_active (bool, default True) — câu không active không xuất hiện trong quiz
+```
+
+**`JlptQuizSession`** — bảng `jlpt_quiz_sessions`
+```
+id, user_id (FK users.id, nullable), level, question_type (nullable = all types)
+num_questions, total_questions, correct_count
+started_at, completed_at (nullable — null = chưa hoàn thành)
+score (float 0–100, nullable — tính khi complete)
+session_questions (Text) — JSON list các question_id theo thứ tự
+```
+
+**`JlptQuizAnswer`** — bảng `jlpt_quiz_answers`
+```
+id, session_id (FK), question_id (FK)
+user_answer (nullable — null = chưa trả lời)
+shuffled_correct — label đúng SAU KHI shuffle (có thể khác correct_answer gốc)
+is_correct (bool nullable), time_taken (float giây), answered_at
+```
+
+> **Quan trọng**: option shuffle xảy ra khi tạo quiz. `shuffled_correct` lưu label mới (A/B/C/D) sau shuffle, không phải label gốc. Frontend dùng `shuffled_correct` để highlight đáp án đúng.
+
+### JLPT Structure (`quiz.py` — `JLPT_STRUCTURE`)
+
+Số câu và thời gian đúng chuẩn JLPT:
+```python
+JLPT_STRUCTURE = {
+    "N5": {"vocabulary": 25, "grammar": 16, "reading":  9, "listening": 12, "minutes": 105},
+    "N4": {"vocabulary": 25, "grammar": 16, "reading": 12, "listening": 14, "minutes": 115},
+    "N3": {"vocabulary": 25, "grammar": 24, "reading": 19, "listening": 22, "minutes": 140},
+    "N2": {"vocabulary": 28, "grammar": 12, "reading": 32, "listening": 29, "minutes": 155},
+    "N1": {"vocabulary": 25, "grammar": 10, "reading": 34, "listening": 29, "minutes": 170},
+}
+```
+Thứ tự câu hỏi: vocabulary → grammar → reading → listening (sort theo `TYPE_ORDER`).
+
+### API Endpoints (`backend/app/jlpt/routers/`)
+
+**Questions** (`/api/v1/jlpt/questions`, public):
+```
+GET  /stats/summary           — thống kê {total, by_level, by_type, by_level_type}
+GET  /?level=N3&question_type=grammar&skip=0&limit=50
+GET  /{id}
+POST /                        — tạo câu hỏi mới
+DELETE /{id}
+```
+
+**Quiz** (`/api/v1/jlpt/quiz`):
+```
+GET  /history                 — [auth] 20 session gần nhất của user
+POST /guest-start             — [public] quiz không lưu DB; trả về correct_map cho client tự chấm
+POST /start                   — [auth] tạo JlptQuizSession + JlptQuizAnswer rows
+POST /{session_id}/answer     — [auth] nộp 1 câu; trả về {is_correct, correct_answer, explanation}
+POST /{session_id}/complete   — [auth] tính score, set completed_at; trả về QuizResult
+GET  /{session_id}/result     — [auth] xem lại kết quả đã hoàn thành
+```
+
+**Audio** (`/api/v1/jlpt/audio-api`, public):
+```
+POST /generate  — body: {text, question_id, voice?}
+                  cache bằng SHA1 hash của text → /static/audio/jlpt_<hash>.mp3
+                  voice default: "ja-JP-NanamiNeural" (edge-tts)
+                  sau khi tạo: cập nhật question.audio_url và bật is_active=True
+                  trả về: {audio_url, cached}
+```
+
+**Crawler** (`/api/v1/jlpt/crawler`, public):
+```
+POST /seed  — nạp dữ liệu mẫu từ backend/crawler/seed_data.py (duplicate-safe)
+POST /run   — web crawler (chưa enable trên UI)
+```
+
+### Seed data (`backend/crawler/`)
+
+```
+seed_data.py              — aggregator, gọi get_seed_questions() → list[dict]
+seed_data_n5_n4.py        — từ vựng + ngữ pháp N5, N4
+seed_data_n3.py           — N3
+seed_data_n2.py           — N2
+seed_data_n1.py           — N1
+seed_data_listening_demo.py — demo câu nghe (có passage)
+seed_data_reading_long.py  — đọc hiểu đoạn dài
+```
+
+Mỗi question dict có schema:
+```python
+{
+  "level": "N3",
+  "question_type": "grammar",       # vocabulary | grammar | reading | listening
+  "question_text": "...",
+  "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...",
+  "correct_answer": "A",            # A | B | C | D
+  "explanation": "...",
+  "passage": "",                    # bắt buộc với reading/listening, "" nếu không có
+  "source_url": "",
+}
+```
+
+App tự động seed khi startup (`main.py` → `_startup_db_fixes()`). Chỉ thêm câu chưa tồn tại (check theo `level + question_text`).
+
+### Thêm câu hỏi mới
+
+**Cách 1 — Seed data** (tốt nhất cho batch):
+```python
+# backend/crawler/seed_data_mydata.py
+_MY_QUESTIONS = [
+    {"level": "N3", "question_type": "vocabulary", "question_text": "...", ...}
+]
+def get_my_questions(): return _MY_QUESTIONS
+
+# backend/crawler/seed_data.py — thêm vào get_seed_questions():
+from crawler.seed_data_mydata import get_my_questions
+questions += get_my_questions()
+```
+
+**Cách 2 — API trực tiếp**:
+```bash
+POST /api/v1/jlpt/questions
+Content-Type: application/json
+{"level":"N3","question_type":"grammar","question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_answer":"A","explanation":"..."}
+```
+
+### Frontend JLPT (`frontend/js/jlpt.js`)
+
+**State chính:**
+```javascript
+state.quiz.sessionId    // null khi guest mode
+state.quiz.questions    // list QuestionForQuiz
+state.quiz.answers      // {question_id: {userAnswer, isCorrect, shuffledCorrect, explanation}}
+state.quiz.timeLeft     // giây còn lại
+
+guestState.active       // true = đang ở chế độ khách
+guestState.correctMap   // {question_id: shuffled_correct_label} — từ /guest-start response
+```
+
+**Luồng Guest Quiz:**
+1. `startQuiz()` → `POST /quiz/guest-start` → lưu `correctMap` vào `guestState`
+2. `selectOption()` → tự chấm bằng `correctMap[questionId]`, không gọi API
+3. `submitQuiz()` → tính kết quả local, hiện `#guest-save-prompt`
+4. User click "Đăng nhập" → `showLoginModal()` → sau login: `auth:login` event → `_applyAuthState(user)`
+
+**Luồng Auth Quiz:**
+1. `startQuiz()` → `POST /quiz/start` → nhận `session_id`
+2. `selectOption()` → `POST /quiz/{session_id}/answer` → server trả `{is_correct, correct_answer, explanation}`
+3. `submitQuiz()` → `POST /quiz/{session_id}/complete` → server tính score
+
+**Auth-aware UI** — `_applyAuthState(user)` toggle các element:
+- `#guest-banner` — hiện khi guest (home tab)
+- `#history-login-required` / `#history-content` — toggle theo auth
+- `#admin-login-required` / `#admin-content` — toggle theo `user.is_superuser`
+- `#guest-save-prompt` — hiện sau khi guest hoàn thành quiz
+
+### Audio TTS (câu nghe hiểu)
+
+Audio được tạo on-demand khi user click "🎧 Nghe và xem nội dung":
+1. Frontend gọi `requestAudio(questionId)` → `POST /audio-api/generate`
+2. Backend dùng `edge-tts` tạo MP3, cache tại `/static/audio/jlpt_<sha1>.mp3`
+3. Question record được update `audio_url` + `is_active=True`
+4. Frontend render `<audio controls autoplay>` + nút "Xem nội dung hội thoại"
+
+Voice mặc định: `ja-JP-NanamiNeural`. Có thể đổi bằng param `voice` trong request.
+
+---
+
 ## Future: Extracting auth module to another repo
 
 To reuse the `auth` module in a new FastAPI project:
