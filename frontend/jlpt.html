@@ -27,7 +27,7 @@
   <button class="nav-tab" data-page="exam" style="display:none;">📚 Đề thi</button>
   <button class="nav-tab" data-page="result">📊 Kết quả</button>
   <button class="nav-tab" data-page="history">📋 Lịch sử</button>
-  <button class="nav-tab" data-page="admin">⚙️ Quản lý</button>
+  <button class="nav-tab" data-page="admin" style="display:none;">⚙️ Quản lý</button>
 </div>
 
 <div class="container">
@@ -253,15 +253,12 @@
     <!-- Shown to users with exam access -->
     <div id="exam-content" style="display:none;">
       <div class="card">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>📚 Bộ đề thi JLPT</span>
-          <button class="btn btn-outline btn-sm" onclick="loadExamSets()">Làm mới</button>
-        </div>
-        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-          Đề thi JLPT từ các kỳ thi chính thức. Chọn bộ đề để bắt đầu thi thử.
-        </p>
-        <div id="exam-sets-list">
-          <div class="empty-state"><div class="icon">📚</div><p>Đang tải...</p></div>
+        <div class="empty-state" style="padding:48px 24px;">
+          <div class="icon" style="font-size:3rem;">🚧</div>
+          <p style="font-size:1.15rem;font-weight:600;margin-top:12px;">Tính năng đang phát triển</p>
+          <p style="color:var(--text-muted);margin-top:8px;max-width:360px;line-height:1.5;">
+            Bộ đề thi JLPT chính thức sẽ sớm ra mắt.<br>Quay lại sau để trải nghiệm!
+          </p>
         </div>
       </div>
     </div>

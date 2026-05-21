@@ -46,7 +46,6 @@ function showPage(name) {
   state.currentPage = name;
   if (name === 'history' && getToken()) loadHistory();
   if (name === 'admin' && getToken()) { loadStats(); loadUsers(); loadAdminExamSets(); }
-  if (name === 'exam' && getToken()) loadExamSets();
 }
 
 window.showPage = showPage;
@@ -67,13 +66,15 @@ function _applyAuthState(user) {
   if (histLogin) histLogin.style.display = isGuest ? '' : 'none';
   if (histContent) histContent.style.display = isGuest ? 'none' : '';
 
-  // Admin tab
+  // Admin tab — only superusers see it
+  const adminTab = document.querySelector('.nav-tab[data-page="admin"]');
+  if (adminTab) adminTab.style.display = isAdmin ? '' : 'none';
   const adminLogin = document.getElementById('admin-login-required');
   const adminContent = document.getElementById('admin-content');
-  if (adminLogin) adminLogin.style.display = (!user || !isAdmin) ? '' : 'none';
+  if (adminLogin) adminLogin.style.display = isAdmin ? 'none' : '';
   if (adminContent) adminContent.style.display = isAdmin ? '' : 'none';
 
-  // Exam tab — visible only to users with exam access or superusers
+  // Exam tab — visible to users with exam access or superusers
   const examTab = document.querySelector('.nav-tab[data-page="exam"]');
   if (examTab) examTab.style.display = hasExamAccess ? '' : 'none';
   const examNoAccess = document.getElementById('exam-no-access');
@@ -871,7 +872,6 @@ document.addEventListener('auth:login', async (e) => {
   if (state.currentPage === 'admin' && loggedInUser.is_superuser) {
     loadStats(); loadUsers(); loadAdminExamSets();
   }
-  if (state.currentPage === 'exam') loadExamSets();
 });
 
 showPage('home');

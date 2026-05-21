@@ -85,17 +85,28 @@ def _startup_db_fixes() -> None:
     from app.models.user import User
 
     db = SessionLocal()
+
+    # 0. Grant superuser to the configured admin account
     try:
-        # 0. Ensure the admin account has superuser privileges
         admin_username = os.environ.get("ADMIN_USERNAME", "")
-        if admin_username:
+        if not admin_username:
+            print("[startup] ADMIN_USERNAME not set — skipping admin grant.")
+        else:
             admin = db.query(User).filter(User.username == admin_username).first()
-            if admin and not admin.is_superuser:
+            if not admin:
+                print(f"[startup] Admin account '{admin_username}' not found in DB.")
+            elif admin.is_superuser:
+                print(f"[startup] Admin '{admin_username}' already has superuser.")
+            else:
                 admin.is_superuser = True
                 db.commit()
-                print("[startup] Granted superuser to admin account.")
+                print(f"[startup] Granted superuser to admin account.")
+    except Exception as exc:
+        print(f"[startup] Admin grant failed: {exc}")
+        db.rollback()
 
-        # 1. Activate any listening questions that were seeded with is_active=False
+    # 1. Activate any listening questions seeded with is_active=False
+    try:
         updated = (
             db.query(Question)
             .filter(Question.question_type == "listening", Question.is_active == False)
@@ -104,12 +115,14 @@ def _startup_db_fixes() -> None:
         if updated:
             db.commit()
             print(f"[startup] Activated {updated} listening questions.")
+    except Exception as exc:
+        print(f"[startup] Listening activation failed: {exc}")
+        db.rollback()
 
-        # 2. Insert seed questions that are not yet in the DB (duplicate-safe)
-        try:
-            from crawler.seed_data import get_seed_questions
-        except ImportError:
-            return
+    # 2. Seed missing questions (duplicate-safe)
+    try:
+        from crawler.seed_data import get_seed_questions
+
         questions = get_seed_questions()
         added = 0
         for q in questions:
@@ -126,8 +139,10 @@ def _startup_db_fixes() -> None:
             print(f"[startup] Seeded {added} new questions.")
         else:
             print("[startup] DB up-to-date, no new questions added.")
+    except ImportError:
+        pass
     except Exception as exc:
-        print(f"[startup] DB fixes failed: {exc}")
+        print(f"[startup] Seed failed: {exc}")
         db.rollback()
     finally:
         db.close()
