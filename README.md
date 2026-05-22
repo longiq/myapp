@@ -10,19 +10,9 @@
 - 4 loại câu hỏi: từ vựng, ngữ pháp, đọc hiểu, nghe hiểu (TTS tự động)
 - Cấp độ N5 → N1
 
-### 📋 Đề thi JLPT chính thức (auth + quyền truy cập)
-- 51 bộ đề thi thật (N1–N3, 2010–2025, tháng 12), seeded từ `exam_data/exam.zip`
-- Layout giống đề thi thực: cuộn toàn bộ, nhóm theo mục (問題1…), đoạn văn, ký hiệu ①②③④
-- Navigator dot + sticky header (bộ đếm câu đã trả lời, đồng hồ, nút nộp bài)
-- Yêu cầu đăng nhập + quyền `has_jlpt_exam_access` (admin cấp)
-
 ### 🔒 Tính năng sau khi đăng nhập
 - Lưu lịch sử làm bài và xem lại kết quả
 - Tiến độ học được theo dõi theo session
-
-### 🛠 Quản trị (superuser)
-- Dashboard `/dashboard.html`: quản lý users, cấp quyền truy cập đề thi
-- Quản lý exam sets: tạo, sửa, import câu hỏi từ JSON, upload media
 
 ### 💳 Thanh toán (Stripe)
 - Tạo Payment Intent, xác nhận thanh toán
@@ -42,12 +32,6 @@ myapp/
 │   │   ├── payment/         # Stripe payment module
 │   │   ├── admin/           # Admin API (superuser only)
 │   │   └── jlpt/            # JLPT learning module (main feature)
-│   │       ├── models.py    # Question, JlptExamSet, JlptQuizSession, JlptQuizAnswer
-│   │       ├── schemas.py   # Pydantic schemas
-│   │       ├── seed_exams.py # Import exam.zip → DB on startup
-│   │       └── routers/     # questions, quiz (guest+auth+exam), audio, crawler
-│   ├── exam_data/
-│   │   └── exam.zip         # 51 bộ đề thi thật (N1–N3, 2010–2025) — không public
 │   └── stripe_payment/      # Stripe SDK wrapper
 └── frontend/
     ├── index.html           # Landing page (JLPT app, no auth needed)
@@ -59,7 +43,7 @@ myapp/
         ├── auth.js          # Token management + API calls
         ├── auth-ui.js       # Login modal component (reusable)
         ├── app.js           # requireAuth, renderNavbar, renderUserIcon
-        └── jlpt.js          # Quiz logic (guest + auth + exam modes)
+        └── jlpt.js          # Quiz logic
 ```
 
 ## Cài đặt & Chạy
@@ -115,22 +99,8 @@ ADMIN_USERNAME=<tên_tài_khoản_admin>
 | POST | `/quiz/{id}/complete` | ✓ | Hoàn thành bài thi |
 | GET | `/quiz/{id}/result` | ✓ | Xem kết quả |
 | GET | `/quiz/history` | ✓ | Lịch sử làm bài |
-| GET | `/quiz/exam-sets` | ✓ + exam | Danh sách bộ đề thi (có quyền) |
-| POST | `/quiz/exam-start` | ✓ + exam | Bắt đầu làm đề thi chính thức |
 | POST | `/audio-api/generate` | - | Tạo audio TTS cho câu nghe |
 | POST | `/crawler/seed` | - | Nạp dữ liệu mẫu |
-
-### Admin — `/api/v1/admin` (superuser)
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/users` | Danh sách người dùng |
-| PATCH | `/users/{id}/jlpt-access` | Cấp/thu hồi quyền truy cập đề thi |
-| GET | `/exam-sets` | Tất cả exam sets (kể cả ẩn) |
-| POST | `/exam-sets` | Tạo exam set mới |
-| PATCH | `/exam-sets/{id}` | Sửa thông tin exam set |
-| POST | `/exam-sets/{id}/import` | Import câu hỏi từ JSON |
-| POST | `/exam-sets/{id}/upload-media` | Upload zip ảnh/audio |
 
 ### Payment — `/api/v1/payment`
 
