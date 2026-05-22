@@ -4,23 +4,29 @@
 
 ## Tính năng chính
 
-### 🎌 JLPT Learning (trang chủ)
+### 🎌 Luyện tập JLPT (trang chủ `/`)
 - Truy cập ngay không cần đăng nhập (chế độ khách)
 - Luyện tập nhanh hoặc thi thử đầy đủ theo cấu trúc JLPT thực tế
 - 4 loại câu hỏi: từ vựng, ngữ pháp, đọc hiểu, nghe hiểu (TTS tự động)
 - Cấp độ N5 → N1
-- Icon người góc phải: click để đăng nhập / xem thông tin tài khoản
+
+### 📋 Đề thi JLPT chính thức (auth + quyền truy cập)
+- 51 bộ đề thi thật (N1–N3, 2010–2025, tháng 12), seeded từ `exam_data/exam.zip`
+- Layout giống đề thi thực: cuộn toàn bộ, nhóm theo mục (問題1…), đoạn văn, ký hiệu ①②③④
+- Navigator dot + sticky header (bộ đếm câu đã trả lời, đồng hồ, nút nộp bài)
+- Yêu cầu đăng nhập + quyền `has_jlpt_exam_access` (admin cấp)
 
 ### 🔒 Tính năng sau khi đăng nhập
 - Lưu lịch sử làm bài và xem lại kết quả
 - Tiến độ học được theo dõi theo session
-- Truy cập trang quản trị (admin)
-- Thanh toán Stripe
+
+### 🛠 Quản trị (superuser)
+- Dashboard `/dashboard.html`: quản lý users, cấp quyền truy cập đề thi
+- Quản lý exam sets: tạo, sửa, import câu hỏi từ JSON, upload media
 
 ### 💳 Thanh toán (Stripe)
 - Tạo Payment Intent, xác nhận thanh toán
-- Quản lý Customer và Payment Method
-- Hoàn tiền (refund), webhook xử lý sự kiện
+- Quản lý Customer, hoàn tiền, webhook
 
 ## Kiến trúc
 
@@ -28,41 +34,46 @@
 myapp/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py          # FastAPI app entry
+│   │   ├── main.py          # FastAPI entry, startup DB migration + seeding
 │   │   ├── database.py      # SQLAlchemy engine + session
-│   │   ├── core/            # Config, JWT security
+│   │   ├── core/            # Config (Pydantic BaseSettings), JWT security
 │   │   ├── models/          # User model
-│   │   ├── auth/            # JWT auth module (register, login, refresh)
+│   │   ├── auth/            # JWT auth (register, login, refresh, me, logout)
 │   │   ├── payment/         # Stripe payment module
+│   │   ├── admin/           # Admin API (superuser only)
 │   │   └── jlpt/            # JLPT learning module (main feature)
-│   │       ├── models.py    # Question, QuizSession, QuizAnswer
-│   │       └── routers/     # questions, quiz (guest+auth), audio, crawler
+│   │       ├── models.py    # Question, JlptExamSet, JlptQuizSession, JlptQuizAnswer
+│   │       ├── schemas.py   # Pydantic schemas
+│   │       ├── seed_exams.py # Import exam.zip → DB on startup
+│   │       └── routers/     # questions, quiz (guest+auth+exam), audio, crawler
+│   ├── exam_data/
+│   │   └── exam.zip         # 51 bộ đề thi thật (N1–N3, 2010–2025) — không public
 │   └── stripe_payment/      # Stripe SDK wrapper
 └── frontend/
-    ├── jlpt.html            # Landing page (JLPT app, no auth needed)
-    ├── index.html           # Login/register page
-    ├── dashboard.html       # User hub
+    ├── index.html           # Landing page (JLPT app, no auth needed)
+    ├── login.html           # Standalone login/register page
+    ├── dashboard.html       # Admin hub (superuser only)
     ├── payment.html         # Stripe payment
+    ├── css/jlpt.css
     └── js/
         ├── auth.js          # Token management + API calls
         ├── auth-ui.js       # Login modal component (reusable)
         ├── app.js           # requireAuth, renderNavbar, renderUserIcon
-        └── jlpt.js          # Quiz logic (guest + auth modes)
+        └── jlpt.js          # Quiz logic (guest + auth + exam modes)
 ```
 
 ## Cài đặt & Chạy
 
-### Yêu cầu
-- Python 3.10+
-
-### Backend
-
 ```bash
 cd backend
 pip install -r requirements.txt
+cp .env.example .env   # điền SECRET_KEY, STRIPE_* keys, ADMIN_USERNAME
+uvicorn app.main:app --reload
+# App:      http://localhost:8000
+# API docs: http://localhost:8000/api/docs
 ```
 
-Tạo file `backend/.env`:
+### Biến môi trường (`.env`)
 
 ```env
 APP_NAME=MyApp
@@ -74,14 +85,11 @@ CORS_ORIGINS=["*"]
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_VERIFY_SSL=true
+ADMIN_USERNAME=<tên_tài_khoản_admin>
 ```
 
-```bash
-uvicorn app.main:app --reload
-```
-
-Server + Frontend chạy tại `http://localhost:8000`.
-API docs: `http://localhost:8000/api/docs`
+`ADMIN_USERNAME`: mỗi lần startup, hệ thống tự cấp `is_superuser=True` cho tài khoản này.
 
 ## API
 
@@ -107,8 +115,22 @@ API docs: `http://localhost:8000/api/docs`
 | POST | `/quiz/{id}/complete` | ✓ | Hoàn thành bài thi |
 | GET | `/quiz/{id}/result` | ✓ | Xem kết quả |
 | GET | `/quiz/history` | ✓ | Lịch sử làm bài |
-| POST | `/audio-api/generate` | - | Tạo audio TTS cho câu hỏi nghe |
-| POST | `/crawler/seed` | - | Nạp dữ liệu mẫu (admin) |
+| GET | `/quiz/exam-sets` | ✓ + exam | Danh sách bộ đề thi (có quyền) |
+| POST | `/quiz/exam-start` | ✓ + exam | Bắt đầu làm đề thi chính thức |
+| POST | `/audio-api/generate` | - | Tạo audio TTS cho câu nghe |
+| POST | `/crawler/seed` | - | Nạp dữ liệu mẫu |
+
+### Admin — `/api/v1/admin` (superuser)
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/users` | Danh sách người dùng |
+| PATCH | `/users/{id}/jlpt-access` | Cấp/thu hồi quyền truy cập đề thi |
+| GET | `/exam-sets` | Tất cả exam sets (kể cả ẩn) |
+| POST | `/exam-sets` | Tạo exam set mới |
+| PATCH | `/exam-sets/{id}` | Sửa thông tin exam set |
+| POST | `/exam-sets/{id}/import` | Import câu hỏi từ JSON |
+| POST | `/exam-sets/{id}/upload-media` | Upload zip ảnh/audio |
 
 ### Payment — `/api/v1/payment`
 
