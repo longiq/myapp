@@ -33,13 +33,17 @@ myapp/
 │   │   ├── admin/               # Admin management module
 │   │   │   └── router.py        # /api/v1/admin (superuser only)
 │   │   └── jlpt/                # JLPT learning module (main app)
-│   │       ├── models.py        # Question, JlptQuizSession, JlptQuizAnswer, JlptExamSet
+│   │       ├── models.py        # Question, JlptExamSet, JlptQuizSession, JlptQuizAnswer
 │   │       ├── schemas.py       # Pydantic schemas incl. GuestQuizStartResponse, ExamSetOut
+│   │       ├── seed_exams.py    # Import exam.zip → DB (idempotent, called at startup)
 │   │       └── routers/
 │   │           ├── questions.py # public question listing & stats
 │   │           ├── quiz.py      # quiz sessions (guest-start public, rest auth)
 │   │           ├── audio.py     # TTS audio generation (edge-tts)
 │   │           └── crawler.py   # seed data loading
+│   ├── exam_data/
+│   │   └── exam.zip             # 51 bộ đề thi thật (N1–N3, 2010–2025, tháng 12)
+│   │                            # KHÔNG được mount vào StaticFiles — chỉ đọc lúc startup
 │   ├── stripe_payment/          # Stripe SDK wrapper library
 │   │   ├── client.py            # init_stripe()
 │   │   ├── payment.py           # create/confirm/refund PaymentIntent
@@ -47,7 +51,7 @@ myapp/
 │   │   ├── webhook.py           # webhook signature verification
 │   │   ├── models.py            # PaymentResult, CustomerResult dataclasses
 │   │   └── exceptions.py        # CardDeclinedError, InvalidCardError, etc.
-│   └── crawler/                 # Seed data for JLPT questions (N1-N5)
+│   └── crawler/                 # Seed data for JLPT practice questions (N1-N5)
 └── frontend/
     ├── index.html               # Main landing page — JLPT app (no auth required, served at /)
     ├── login.html               # Standalone login/register page
@@ -58,7 +62,7 @@ myapp/
         ├── auth.js              # Auth API module (token management, API calls)
         ├── auth-ui.js           # Login/register modal UI component (reusable)
         ├── app.js               # Shared: requireAuth, renderNavbar, renderUserIcon
-        └── jlpt.js              # JLPT quiz logic (guest + auth modes)
+        └── jlpt.js              # JLPT quiz logic (guest + auth + exam modes)
 ```
 
 ## Development
@@ -66,7 +70,7 @@ myapp/
 ```bash
 cd backend
 pip install -r requirements.txt
-cp .env.example .env   # fill in SECRET_KEY, STRIPE_* keys
+cp .env.example .env   # fill in SECRET_KEY, STRIPE_* keys, ADMIN_USERNAME
 uvicorn app.main:app --reload
 # App: http://localhost:8000
 # API docs: http://localhost:8000/api/docs
@@ -190,13 +194,22 @@ app.include_router(yourmodule_router, prefix="/api/v1/yourmodule")
 ```
 id, level (N1–N5), question_type (vocabulary|grammar|reading|listening)
 passage (Text, nullable)    — đoạn văn đọc hiểu hoặc hội thoại nghe
-question_text               — câu hỏi (tiếng Nhật)
+section_title (Text, nullable) — tiêu đề mục câu hỏi (問題1, 問題2...) từ đề thi thật
+question_text               — câu hỏi (tiếng Nhật, có thể chứa HTML <ruby>, <u>, <br/>)
 option_a, option_b, option_c, option_d
 correct_answer              — "A" | "B" | "C" | "D" (stored as-is, shuffled at quiz time)
 explanation (Text)          — giải thích đáp án
 audio_url                   — path /audio/jlpt_<hash>.mp3 (tự động điền sau khi TTS)
 image_url                   — hình ảnh câu hỏi (optional)
+exam_set_id (FK, nullable)  — NULL = câu luyện tập; non-NULL = thuộc bộ đề thi
+source_url (Text, nullable) — unique key dạng "N1-2025-12/section-1/q45" (idempotency)
 is_active (bool, default True) — câu không active không xuất hiện trong quiz
+```
+
+**`JlptExamSet`** — bảng `jlpt_exam_sets`
+```
+id, name, year, session ("december"|"july"), level (N1–N5)
+description, is_active (bool)
 ```
 
 **`JlptQuizSession`** — bảng `jlpt_quiz_sessions`
@@ -232,6 +245,21 @@ JLPT_STRUCTURE = {
 ```
 Thứ tự câu hỏi: vocabulary → grammar → reading → listening (sort theo `TYPE_ORDER`).
 
+### Exam data seeding (`backend/app/jlpt/seed_exams.py`)
+
+Đọc `backend/exam_data/exam.zip` và insert vào DB khi startup. Idempotent theo `source_url`.
+
+Format thư mục trong ZIP: `exam/N1-2025-12/section-1.json`
+- `section-1` → `question_type = "vocabulary"` (từ vựng + ngữ pháp)
+- `section-2` → `question_type = "reading"` (có `passages[]`, `pid` có thể là int hoặc list)
+- `section-3` → `question_type = "listening"`
+
+Mỗi question JSON: `{qid, ques (HTML), options: {"1":…,"4":…}, answer: "1", expl, pid}`
+- `options.1→A, 2→B, 3→C, 4→D`; `answer "1"→"A"` etc.
+- `section_title` lấy từ field `sec` của từng section group trong JSON
+
+Dữ liệu hiện có: 51 bộ đề, N1–N3, 2010–2025, tháng 12. N4 có 3 bộ (2021, 2024, 2025), N5 có 1 bộ (2021).
+
 ### API Endpoints (`backend/app/jlpt/routers/`)
 
 **Questions** (`/api/v1/jlpt/questions`, public):
@@ -251,6 +279,8 @@ POST /start                   — [auth] tạo JlptQuizSession + JlptQuizAnswer 
 POST /{session_id}/answer     — [auth] nộp 1 câu; trả về {is_correct, correct_answer, explanation}
 POST /{session_id}/complete   — [auth] tính score, set completed_at; trả về QuizResult
 GET  /{session_id}/result     — [auth] xem lại kết quả đã hoàn thành
+GET  /exam-sets               — [auth + exam access] danh sách exam sets có câu hỏi
+POST /exam-start              — [auth + exam access] {exam_set_id} → ExamQuizStartResponse
 ```
 
 **Audio** (`/api/v1/jlpt/audio-api`, public):
@@ -326,10 +356,24 @@ state.quiz.sessionId    // null khi guest mode
 state.quiz.questions    // list QuestionForQuiz
 state.quiz.answers      // {question_id: {userAnswer, isCorrect, shuffledCorrect, explanation}}
 state.quiz.timeLeft     // giây còn lại
+state.quiz.isExam       // true = chế độ đề thi (full scrollable), false = luyện tập (1 câu)
 
 guestState.active       // true = đang ở chế độ khách
 guestState.correctMap   // {question_id: shuffled_correct_label} — từ /guest-start response
 ```
+
+**Hai chế độ quiz:**
+
+1. **Luyện tập** (`isExam = false`) — trang `#page-quiz`
+   - Hiện từng câu một, có nút Previous/Next
+   - Guest hoặc auth đều dùng được
+
+2. **Đề thi** (`isExam = true`) — trang `#page-exam-quiz`
+   - Cuộn toàn bộ đề, câu hỏi nhóm theo `section_title` → passage → câu
+   - Ký hiệu ①②③④ thay cho A/B/C/D; `innerHTML` cho question_text (giữ ruby/furigana)
+   - Sticky header: tên đề, số câu đã trả lời, đồng hồ đếm ngược, nút nộp bài
+   - Navigator dots cuộn ngang — chuyển sang `answered` class khi click đáp án
+   - Yêu cầu auth + `has_jlpt_exam_access`
 
 **Luồng Guest Quiz:**
 1. `startQuiz()` → `POST /quiz/guest-start` → lưu `correctMap` vào `guestState`
@@ -342,11 +386,23 @@ guestState.correctMap   // {question_id: shuffled_correct_label} — từ /guest
 2. `selectOption()` → `POST /quiz/{session_id}/answer` → server trả `{is_correct, correct_answer, explanation}`
 3. `submitQuiz()` → `POST /quiz/{session_id}/complete` → server tính score
 
+**Luồng Exam Quiz:**
+1. `openExamSet(id)` → `startExamQuiz(id)` → `POST /quiz/exam-start`
+2. Navigate đến `#page-exam-quiz` → `renderExamQuizPage()` render toàn bộ đề
+3. `selectOption()` (trong exam mode) → gọi API answer + `_updateExamQuestion(qId)` update DOM tại chỗ
+4. `submitQuiz()` → `POST /quiz/{session_id}/complete`
+
 **Auth-aware UI** — `_applyAuthState(user)` toggle các element:
 - `#guest-banner` — hiện khi guest (home tab)
 - `#history-login-required` / `#history-content` — toggle theo auth
 - `#admin-login-required` / `#admin-content` — toggle theo `user.is_superuser`
 - `#guest-save-prompt` — hiện sau khi guest hoàn thành quiz
+
+**Exam catalog** (`renderExamGrid`):
+- Năm từ 2010 đến năm hiện tại - 1
+- Button có data: màu tím, hover đổi màu, click → `openExamSet(id)`
+- Button không có data: màu xám, disabled, hiện "Sắp có"
+- Không hiện số câu trên button (chỉ hiện năm/tháng)
 
 ### Audio TTS (câu nghe hiểu)
 
@@ -357,6 +413,15 @@ Audio được tạo on-demand khi user click "🎧 Nghe và xem nội dung":
 4. Frontend render `<audio controls autoplay>` + nút "Xem nội dung hội thoại"
 
 Voice mặc định: `ja-JP-NanamiNeural`. Có thể đổi bằng param `voice` trong request.
+
+### Startup DB flow (`main.py` → `_startup_db_fixes()`)
+
+Chạy theo thứ tự khi startup:
+1. **Migrations**: thêm cột mới vào bảng cũ nếu chưa tồn tại (dùng `inspect(engine)` + `ALTER TABLE`)
+   - Các cột đã migrate: `exam_set_id`, `source_url`, `section_title` trên `jlpt_questions`
+2. **Practice seed**: import câu luyện tập từ `crawler/seed_data.py` (check theo `level + question_text`)
+3. **Exam seed**: import đề thi từ `exam_data/exam.zip` (check theo `source_url`)
+4. **Admin grant**: cấp `is_superuser=True` cho `ADMIN_USERNAME` nếu chưa set
 
 ---
 
@@ -461,3 +526,4 @@ showLoginModal();
 - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Frontend: served as static files from `uvicorn` via `app.mount("/")`
 - DB: set `DATABASE_URL` env var to PostgreSQL URL on Render
+- `exam_data/exam.zip` tracked in git (4.6MB) — seeded to DB on first deploy, safe to re-deploy
