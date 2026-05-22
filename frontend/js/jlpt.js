@@ -702,8 +702,8 @@ function renderExamGrid(level) {
   const currentYear = new Date().getFullYear();
   const SESSION_LABEL = { july: '7', december: '12' };
   const SESSION_ORDER = ['december', 'july'];
-  // Show 20 years to cover data back to 2006
-  const years = Array.from({ length: 20 }, (_, i) => currentYear - 1 - i);
+  const START_YEAR = 2010;
+  const years = Array.from({ length: currentYear - START_YEAR }, (_, i) => currentYear - 1 - i);
 
   grid.innerHTML = years.flatMap(year =>
     SESSION_ORDER.map(session => {
@@ -712,11 +712,9 @@ function renderExamGrid(level) {
       );
       const label = `${year}/${SESSION_LABEL[session]}`;
       if (match) {
-        return `<button class="exam-year-btn available" onclick="openExamSet(${match.id})">
-          <div>${label}</div><div class="exam-btn-sub">${match.question_count} câu</div></button>`;
+        return `<button class="exam-year-btn available" onclick="openExamSet(${match.id})">${label}</button>`;
       }
-      return `<button class="exam-year-btn unavailable" disabled>
-        <div>${label}</div><div class="exam-btn-sub">Sắp có</div></button>`;
+      return `<button class="exam-year-btn unavailable" disabled>${label}<div class="exam-btn-sub">Sắp có</div></button>`;
     })
   ).join('');
 }
