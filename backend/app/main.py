@@ -144,6 +144,19 @@ def _startup_db_fixes() -> None:
     except Exception as exc:
         print(f"[startup] Seed failed: {exc}")
         db.rollback()
+
+    # 3. Import official exam data from exam.zip (idempotent)
+    try:
+        from app.jlpt.seed_exams import seed_exam_data
+
+        n = seed_exam_data(db)
+        if n:
+            print(f"[startup] Imported {n} exam questions from exam.zip.")
+        else:
+            print("[startup] Exam data already up-to-date.")
+    except Exception as exc:
+        print(f"[startup] Exam import skipped: {exc}")
+        db.rollback()
     finally:
         db.close()
 
