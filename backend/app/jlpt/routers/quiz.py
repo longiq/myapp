@@ -63,6 +63,7 @@ def _build_question_for_quiz(
         level=question.level,
         question_type=question.question_type,
         passage=question.passage,
+        section_title=question.section_title,
         question_text=question.question_text,
         options=shuffled_options,
         audio_url=question.audio_url,

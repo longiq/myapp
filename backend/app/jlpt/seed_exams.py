@@ -62,6 +62,7 @@ def seed_exam_data(db) -> int:
                 passages = {p["pid"]: p["passage"] for p in data.get("passages", [])}
 
                 for sec in data.get("sections", []):
+                    sec_title = sec.get("sec")
                     for q in sec.get("questions", []):
                         uid = f"{exam_id}/{sec_name}/q{q['qid']}"
                         if uid in existing_sources:
@@ -88,6 +89,7 @@ def seed_exam_data(db) -> int:
                             correct_answer=correct,
                             explanation=q.get("expl"),
                             passage=passage_text,
+                            section_title=sec_title,
                             source_url=uid,
                             is_active=True,
                         ))

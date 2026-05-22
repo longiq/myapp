@@ -50,6 +50,7 @@ class Question(Base):
     is_active = Column(Boolean, default=True, nullable=False, server_default="1")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     exam_set_id = Column(Integer, ForeignKey("jlpt_exam_sets.id"), nullable=True, index=True)
+    section_title = Column(Text, nullable=True)
 
     quiz_answers = relationship("JlptQuizAnswer", back_populates="question")
     exam_set = relationship("JlptExamSet", back_populates="questions")
