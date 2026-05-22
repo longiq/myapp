@@ -548,8 +548,7 @@ body {
 .exam-year-btn.available { border-color: var(--primary); color: var(--primary); cursor: pointer; }
 .exam-year-btn.available:hover { background: var(--primary); color: white; }
 .exam-year-btn.unavailable { color: var(--text-muted); cursor: default; }
-.exam-btn-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
-.exam-year-btn.available .exam-btn-sub { color: inherit; opacity: 0.75; }
+.exam-btn-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 @media (max-width: 480px) {
   .exam-sidebar { width: 80px; }
   .exam-sidebar-item { font-size: 0.9rem; padding: 14px 6px; }
