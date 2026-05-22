@@ -27,6 +27,8 @@ const state = {
     audioLoaded: {},
     passageVisible: {},
     paused: false,
+    isExam: false,
+    examTitle: '',
   },
   exam: { level: 'N1', sets: [] },
   stats: null,
@@ -61,7 +63,9 @@ function showConfirm(message, confirmText = 'Tiếp tục', cancelText = 'Hủy'
 // ── Navigation ─────────────────────────────────────────
 function showPage(name) {
   // Auto-pause timer when navigating away from an active quiz
-  if (state.currentPage === 'quiz' && name !== 'quiz' && state.quiz.questions.length > 0 && !state.quiz.paused) {
+  const activeQuizPage = state.currentPage === 'quiz' || state.currentPage === 'exam-quiz';
+  const leavingQuiz = activeQuizPage && name !== 'quiz' && name !== 'exam-quiz';
+  if (leavingQuiz && state.quiz.questions.length > 0 && !state.quiz.paused) {
     clearInterval(state.quiz.timer);
     state.quiz.paused = true;
   }
@@ -272,6 +276,7 @@ window.startQuiz = async function() {
     state.quiz.passageVisible = {};
     state.quiz.totalTime = totalMins * 60;
     state.quiz.timeLeft = state.quiz.totalTime;
+    state.quiz.isExam = false;
 
     showPage('quiz');
     renderQuestion();
@@ -299,13 +304,18 @@ function startTimer() {
 }
 
 function updateTimerDisplay() {
-  const el = document.getElementById('quiz-timer');
-  if (!el) return;
   const t = state.quiz.timeLeft;
-  const m = Math.floor(t / 60);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
   const s = t % 60;
-  el.textContent = `${m}:${String(s).padStart(2,'0')}`;
-  el.className = 'timer' + (t < 60 ? ' danger' : t < 120 ? ' warning' : '');
+  const text = h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${m}:${String(s).padStart(2,'0')}`;
+  const cls = 'timer' + (t < 60 ? ' danger' : t < 120 ? ' warning' : '');
+  ['quiz-timer', 'eq-timer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = text; el.className = cls; }
+  });
 }
 
 function handleTimeUp() {
@@ -448,23 +458,20 @@ window.togglePassage = function(questionId) {
 window.selectOption = async function(btnEl, questionId, label) {
   if (state.quiz.answers[questionId]) return;
   const timeTaken = getQuestionElapsedTime();
+  const isExamMode = state.quiz.isExam;
+
+  // Disable sibling options immediately
+  const optContainer = btnEl.closest('.options-grid') || btnEl.closest('.eq-options');
+  if (optContainer) optContainer.querySelectorAll('button').forEach(b => b.disabled = true);
+  btnEl.classList.add('selected');
 
   if (guestState.active) {
-    // Guest mode: score locally using correctMap
     const shuffledCorrect = String(guestState.correctMap[questionId] || '');
     const isCorrect = label.toUpperCase() === shuffledCorrect.toUpperCase();
-    state.quiz.answers[questionId] = {
-      userAnswer: label,
-      isCorrect,
-      shuffledCorrect,
-      explanation: null,
-    };
-    btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-    renderQuestion();
+    state.quiz.answers[questionId] = { userAnswer: label, isCorrect, shuffledCorrect, explanation: null };
+    if (isExamMode) _updateExamQuestion(parseInt(questionId));
+    else renderQuestion();
   } else {
-    // Authenticated: send to server
-    btnEl.classList.add('selected');
-    btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
     try {
       const res = await apiFetch(`/quiz/${state.quiz.sessionId}/answer`, {
         method: 'POST',
@@ -476,10 +483,11 @@ window.selectOption = async function(btnEl, questionId, label) {
         shuffledCorrect: res.correct_answer,
         explanation: res.explanation,
       };
-      renderQuestion();
+      if (isExamMode) _updateExamQuestion(parseInt(questionId));
+      else renderQuestion();
     } catch {
       btnEl.classList.remove('selected');
-      btnEl.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.disabled = false);
+      if (optContainer) optContainer.querySelectorAll('button').forEach(b => b.disabled = false);
     }
   }
 };
@@ -727,6 +735,8 @@ window.openExamSet = async function(examSetId) {
 };
 
 window.startExamQuiz = async function(examSetId) {
+  // Find exam set name from cached list
+  const examSet = state.exam.sets.find(s => s.id === examSetId);
   try {
     const res = await apiFetch('/quiz/exam-start', {
       method: 'POST',
@@ -740,6 +750,9 @@ window.startExamQuiz = async function(examSetId) {
     state.quiz.audioLoading = {};
     state.quiz.audioLoaded = {};
     state.quiz.passageVisible = {};
+    state.quiz.paused = false;
+    state.quiz.isExam = true;
+    state.quiz.examTitle = examSet ? examSet.name : 'Đề thi JLPT';
     guestState.active = false;
     if (res.total_minutes) {
       state.quiz.timeLeft = res.total_minutes * 60;
@@ -747,14 +760,117 @@ window.startExamQuiz = async function(examSetId) {
     } else {
       state.quiz.timeLeft = 0;
     }
-    showPage('quiz');
-    renderQuestion();
+    showPage('exam-quiz');
+    renderExamQuizPage();
     if (res.total_minutes) startTimer();
-    toast('Bắt đầu thi thử bộ đề!', 'success');
+    toast('Bắt đầu thi!', 'success');
   } catch (e) {
     toast(e.message || 'Không thể bắt đầu bài thi', 'error');
   }
 };
+
+// ── Exam Quiz Page (full scrollable layout) ────────────
+
+const OPT_SYMBOL = ['①', '②', '③', '④'];
+
+function renderExamQuizPage() {
+  const container = document.getElementById('eq-content');
+  const navEl = document.getElementById('eq-nav');
+  const titleEl = document.getElementById('eq-title');
+  if (!container) return;
+
+  const questions = state.quiz.questions;
+  const total = questions.length;
+  const answeredCount = Object.keys(state.quiz.answers).length;
+
+  if (titleEl) titleEl.textContent = `📋 ${state.quiz.examTitle}`;
+  const answeredEl = document.getElementById('eq-answered');
+  if (answeredEl) answeredEl.textContent = `${answeredCount}/${total} câu`;
+
+  // Navigator
+  if (navEl) {
+    navEl.innerHTML = questions.map((q, i) => {
+      const ans = state.quiz.answers[q.id];
+      return `<a href="#eq-q${q.id}" class="eq-nav-dot${ans ? ' answered' : ''}">${i + 1}</a>`;
+    }).join('');
+  }
+
+  // Group questions: section_title → passage groups
+  const sections = [];
+  let curSec = null;
+  for (const q of questions) {
+    const secKey = q.section_title || '';
+    if (!curSec || curSec.key !== secKey) {
+      curSec = { key: secKey, title: q.section_title, groups: [] };
+      sections.push(curSec);
+    }
+    const passKey = q.passage || '';
+    let grp = curSec.groups.find(g => g.passKey === passKey);
+    if (!grp) { grp = { passKey, passage: q.passage, questions: [] }; curSec.groups.push(grp); }
+    grp.questions.push(q);
+  }
+
+  container.innerHTML = sections.map(sec => `
+    <div class="eq-section">
+      ${sec.title ? `<div class="eq-section-title">${sec.title}</div>` : ''}
+      ${sec.groups.map(grp => `
+        ${grp.passage ? `<div class="eq-passage">${grp.passage}</div>` : ''}
+        ${grp.questions.map(q => _buildExamQuestionHtml(q, questions)).join('')}
+      `).join('')}
+    </div>
+  `).join('');
+
+  updateTimerDisplay();
+}
+
+function _buildExamQuestionHtml(q, allQuestions) {
+  const ans = state.quiz.answers[q.id];
+  const globalNum = allQuestions.indexOf(q) + 1;
+  const optEntries = Object.entries(q.options);
+  const optHtml = optEntries.map(([label, text], oi) => {
+    const symbol = OPT_SYMBOL[oi] || label;
+    const cleanText = text.replace(/^[1-4][　\s]+/, '');
+    let cls = 'eq-option';
+    if (ans) {
+      if (label === ans.shuffledCorrect) cls += ' correct';
+      else if (label === ans.userAnswer) cls += ' wrong';
+    }
+    return `<button class="${cls}" onclick="selectOption(this,'${q.id}','${label}')"${ans ? ' disabled' : ''}>
+      <span class="eq-opt-sym">${symbol}</span><span class="eq-opt-text">${cleanText}</span>
+    </button>`;
+  }).join('');
+
+  const explHtml = ans?.explanation
+    ? `<div class="eq-explanation">${ans.explanation}</div>` : '';
+
+  return `<div class="eq-question-block" id="eq-q${q.id}">
+    <div class="eq-question-text">${q.question_text}</div>
+    <div class="eq-options">${optHtml}</div>
+    ${explHtml}
+  </div>`;
+}
+
+function _updateExamQuestion(qId) {
+  const block = document.getElementById(`eq-q${qId}`);
+  if (!block) return;
+  const q = state.quiz.questions.find(x => x.id === qId);
+  if (!q) return;
+  const ans = state.quiz.answers[qId];
+
+  // Replace the block content
+  block.outerHTML = _buildExamQuestionHtml(q, state.quiz.questions);
+
+  // Update nav dot
+  const dot = document.querySelector(`a.eq-nav-dot[href="#eq-q${qId}"]`);
+  if (dot && ans) dot.classList.add('answered');
+
+  // Update answered count
+  const answeredEl = document.getElementById('eq-answered');
+  if (answeredEl) {
+    const count = Object.keys(state.quiz.answers).length;
+    answeredEl.textContent = `${count}/${state.quiz.questions.length} câu`;
+  }
+}
 
 // ── Admin / User Management ────────────────────────────
 

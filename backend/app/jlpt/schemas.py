@@ -59,6 +59,7 @@ class QuestionForQuiz(BaseModel):
     level: str
     question_type: str
     passage: str | None = None
+    section_title: str | None = None
     question_text: str
     options: dict[str, str]  # {"A": "...", "B": "...", "C": "...", "D": "..."} — already shuffled
     audio_url: str | None = None

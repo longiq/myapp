@@ -71,6 +71,12 @@ def _run_migrations() -> None:
                 )
                 db.commit()
                 print("[migration] Added exam_set_id to jlpt_questions.")
+            if "section_title" not in q_cols:
+                db.execute(
+                    text("ALTER TABLE jlpt_questions ADD COLUMN section_title TEXT")
+                )
+                db.commit()
+                print("[migration] Added section_title to jlpt_questions.")
     except Exception as exc:
         print(f"[migration] Failed: {exc}")
         db.rollback()
