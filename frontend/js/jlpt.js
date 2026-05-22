@@ -653,12 +653,27 @@ window.loadExamSets = loadExamSets;
 // ── Exam Catalog (sidebar + year/session grid) ─────────
 
 async function loadExamPage() {
-  const currentUser = (await import('./app.js')).getCurrentUser();
-  const hasAccess = currentUser?.has_jlpt_exam_access || currentUser?.is_superuser;
-  if (hasAccess && getToken()) {
-    try { state.exam.sets = await apiFetch('/quiz/exam-sets'); } catch { state.exam.sets = []; }
-  } else {
+  const grid = document.getElementById('exam-year-grid');
+  if (!getToken()) {
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px 16px;color:var(--text-muted);">
+      <div style="font-size:2rem;margin-bottom:8px;">🔒</div>
+      <p>Đăng nhập để xem bộ đề thi.</p>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.showLoginModal && window.showLoginModal()">Đăng nhập</button>
+    </div>`;
+    return;
+  }
+  try {
+    state.exam.sets = await apiFetch('/quiz/exam-sets');
+  } catch (e) {
     state.exam.sets = [];
+    if (e?.status === 403 && grid) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px 16px;color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:8px;">🔒</div>
+        <p>Bạn chưa được cấp quyền truy cập bộ đề thi.</p>
+        <p style="font-size:0.82rem;margin-top:6px;">Liên hệ quản trị viên để được cấp quyền.</p>
+      </div>`;
+      return;
+    }
   }
   renderExamGrid(state.exam.level);
 }
@@ -679,7 +694,8 @@ function renderExamGrid(level) {
   const currentYear = new Date().getFullYear();
   const SESSION_LABEL = { july: '7', december: '12' };
   const SESSION_ORDER = ['december', 'july'];
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 1 - i);
+  // Show 20 years to cover data back to 2006
+  const years = Array.from({ length: 20 }, (_, i) => currentYear - 1 - i);
 
   grid.innerHTML = years.flatMap(year =>
     SESSION_ORDER.map(session => {

@@ -70,6 +70,12 @@ def seed_exam_data(db) -> int:
                         raw_answer = str(q.get("answer", "1"))
                         correct = OPTION_MAP.get(raw_answer, "A")
                         pid = q.get("pid")
+                        if isinstance(pid, list):
+                            passage_text = "\n\n".join(
+                                passages[p] for p in pid if p in passages
+                            ) or None
+                        else:
+                            passage_text = passages.get(pid) if pid is not None else None
                         db.add(Question(
                             level=level,
                             question_type=q_type,
@@ -81,7 +87,7 @@ def seed_exam_data(db) -> int:
                             option_d=opts.get("4", ""),
                             correct_answer=correct,
                             explanation=q.get("expl"),
-                            passage=passages.get(pid) if pid is not None else None,
+                            passage=passage_text,
                             source_url=uid,
                             is_active=True,
                         ))
